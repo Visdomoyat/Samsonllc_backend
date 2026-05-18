@@ -1,0 +1,68 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Samson LLC{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/base.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  <header class="site-header" id="site-header">
+    <div class="header-inner">
+      <div class="header-row">
+        <a class="brand" href="{% url 'landing' %}" aria-label="Samson LLC home">
+          <img
+            class="brand-logo"
+            src="{% static 'images/logo.jpeg' %}"
+            alt="Samson LLC"
+          >
+        </a>
+
+        <button
+          type="button"
+          class="nav-toggle"
+          id="nav-toggle"
+          aria-label="Open menu"
+          aria-expanded="false"
+          aria-controls="main-nav"
+        >
+          <span class="nav-toggle-box" aria-hidden="true">
+            <span class="nav-toggle-bar"></span>
+            <span class="nav-toggle-bar"></span>
+            <span class="nav-toggle-bar"></span>
+          </span>
+        </button>
+      </div>
+
+      <form class="search-form" action="{% url 'search' %}" method="get" role="search">
+        <input
+          type="search"
+          name="q"
+          placeholder="Search peptides…"
+          value="{{ request.GET.q|default:'' }}"
+          aria-label="Search products"
+        >
+        <button type="submit">Search</button>
+      </form>
+
+      <nav class="main-nav" id="main-nav" aria-label="Main">
+        <a href="{% url 'shop' %}"{% if request.resolver_match.url_name == 'shop' %} class="is-active"{% endif %}>Shop</a>
+        <a href="{% url 'purchased' %}"{% if request.resolver_match.url_name == 'purchased' %} class="is-active"{% endif %}>Purchased</a>
+        <a href="{% url 'transactions' %}"{% if request.resolver_match.url_name == 'transactions' %} class="is-active"{% endif %}>Transaction</a>
+        <a href="{% url 'logout' %}" class="nav-logout">Logout</a>
+      </nav>
+    </div>
+
+    <div class="nav-backdrop" id="nav-backdrop" hidden></div>
+  </header>
+
+  <main class="site-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="{% static 'js/base.js' %}" defer></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
