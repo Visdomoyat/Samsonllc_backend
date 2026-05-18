@@ -48,15 +48,28 @@
       </form>
 
       <nav class="main-nav" id="main-nav" aria-label="Main">
-        <a href="{% url 'shop' %}"{% if request.resolver_match.url_name == 'shop' %} class="is-active"{% endif %}>Shop</a>
-        <a href="{% url 'purchased' %}"{% if request.resolver_match.url_name == 'purchased' %} class="is-active"{% endif %}>Purchased</a>
-        <a href="{% url 'transactions' %}"{% if request.resolver_match.url_name == 'transactions' %} class="is-active"{% endif %}>Transaction</a>
-        <a href="{% url 'logout' %}" class="nav-logout">Logout</a>
+        {% if user.is_authenticated %}
+          <a href="{% url 'shop' %}"{% if request.resolver_match.url_name == 'shop' %} class="is-active"{% endif %}>Shop</a>
+          <a href="{% url 'purchased' %}"{% if request.resolver_match.url_name == 'purchased' %} class="is-active"{% endif %}>Purchased</a>
+          <a href="{% url 'transactions' %}"{% if request.resolver_match.url_name == 'transactions' %} class="is-active"{% endif %}>Transaction</a>
+          <form class="nav-logout-form" action="{% url 'logout' %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="nav-link-button nav-logout">Logout</button>
+          </form>
+        {% endif %}
       </nav>
     </div>
 
     <div class="nav-backdrop" id="nav-backdrop" hidden></div>
   </header>
+
+  {% if messages %}
+    <div class="messages" aria-live="polite">
+      {% for message in messages %}
+        <p class="message message-{{ message.tags }}">{{ message }}</p>
+      {% endfor %}
+    </div>
+  {% endif %}
 
   <main class="site-main">
     {% block content %}{% endblock %}
