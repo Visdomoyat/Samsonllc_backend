@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }} — Samson LLC{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/shop.css' %}">
+{% endblock %}
+
+{% block content %}
+  <div class="shop-header">
+    <h1 class="shop-title">{{ page_title }}</h1>
+    <a href="{% url 'shop' %}" class="btn btn-secondary">Back to shop</a>
+  </div>
+
+  <form class="product-form" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div class="form-errors" role="alert">
+        {% for error in form.non_field_errors %}
+          <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="form-field">
+      <label for="{{ form.name.id_for_label }}">Product name</label>
+      {{ form.name }}
+      {% if form.name.errors %}
+        <p class="field-error">{{ form.name.errors.0 }}</p>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.image.id_for_label }}">Image</label>
+      {{ form.image }}
+      {% if product and product.image %}
+        <p class="form-hint">Current: <a href="{{ product.image.url }}" target="_blank" rel="noopener">{{ product.image.name }}</a>. Leave empty to keep it.</p>
+      {% endif %}
+      {% if form.image.errors %}
+        <p class="field-error">{{ form.image.errors.0 }}</p>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.description.id_for_label }}">Description</label>
+      {{ form.description }}
+      {% if form.description.errors %}
+        <p class="field-error">{{ form.description.errors.0 }}</p>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.price.id_for_label }}">Price</label>
+      {{ form.price }}
+      {% if form.price.errors %}
+        <p class="field-error">{{ form.price.errors.0 }}</p>
+      {% endif %}
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save product</button>
+      <a href="{% url 'shop' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+{% endblock %}
