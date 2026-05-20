@@ -19,8 +19,14 @@ def search(request):
 
 @login_required
 def shop(request):
-    products = Product.objects.all()
-    return render(request, 'shop.html', {'products': products})
+    products = list(Product.objects.all())
+    product_rows = [
+        products[i:i + 4] for i in range(0, len(products), 4)
+    ]
+    return render(request, 'shop.html', {
+        'products': products,
+        'product_rows': product_rows,
+    })
 
 
 @login_required
