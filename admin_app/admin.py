@@ -1,3 +1,31 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import Order, OrderItem, Product
+
+
+class OrderItemInline(admin.TabularInline):
+    model = OrderItem
+    extra = 0
+    readonly_fields = ('product_name', 'quantity', 'unit_price')
+
+
+@admin.register(Product)
+class ProductAdmin(admin.ModelAdmin):
+    list_display = ('name', 'price', 'created_at')
+    search_fields = ('name',)
+
+
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'customer_name',
+        'customer_email',
+        'status',
+        'tracking_number',
+        'created_at',
+    )
+    list_filter = ('status',)
+    search_fields = ('customer_name', 'customer_email', 'tracking_number')
+    inlines = [OrderItemInline]
+    readonly_fields = ('tracking_emailed_at', 'created_at', 'updated_at')
