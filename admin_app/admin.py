@@ -28,4 +28,12 @@ class OrderAdmin(admin.ModelAdmin):
     list_filter = ('status',)
     search_fields = ('customer_name', 'customer_email', 'tracking_number')
     inlines = [OrderItemInline]
-    readonly_fields = ('tracking_emailed_at', 'created_at', 'updated_at')
+    readonly_fields = (
+        'payment_provider',
+        'stripe_checkout_session_id',
+        'paypal_order_id',
+        'paid_at',
+        'tracking_emailed_at',
+        'created_at',
+        'updated_at',
+    )

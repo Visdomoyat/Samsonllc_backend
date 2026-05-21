@@ -26,11 +26,23 @@ class Order(models.Model):
         DELIVERED = 'delivered', 'Delivered'
         CANCELLED = 'cancelled', 'Cancelled'
 
+    class PaymentProvider(models.TextChoices):
+        STRIPE = 'stripe', 'Stripe'
+        PAYPAL = 'paypal', 'PayPal'
+
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
         default=Status.PENDING,
     )
+    payment_provider = models.CharField(
+        max_length=20,
+        choices=PaymentProvider.choices,
+        blank=True,
+    )
+    stripe_checkout_session_id = models.CharField(max_length=255, blank=True)
+    paypal_order_id = models.CharField(max_length=255, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
     customer_name = models.CharField(max_length=200)
     customer_email = models.EmailField()
     shipping_line1 = models.CharField(max_length=255)

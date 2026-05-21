@@ -1,5 +1,6 @@
 import json
 
+import requests
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
@@ -10,6 +11,14 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_http_methods
 
 from .models import Order, OrderItem, Product
+from .payments import (
+    PaymentConfigurationError,
+    capture_paypal_order,
+    create_paypal_order,
+    create_stripe_checkout_session,
+    handle_paypal_webhook,
+    handle_stripe_webhook,
+)
 from .services import send_tracking_email
 
 
@@ -69,6 +78,9 @@ def _serialize_order_summary(order: Order) -> dict:
         'customer_email': order.customer_email,
         'total': str(order.total),
         'item_count': order.items.count(),
+        'payment_provider': order.payment_provider or None,
+        'paid_at': order.paid_at.isoformat() if order.paid_at else None,
+        'is_paid': order.status == Order.Status.PAID,
         'tracking_number': order.tracking_number or None,
         'tracking_emailed_at': (
             order.tracking_emailed_at.isoformat()
@@ -141,6 +153,104 @@ def login_view(request):
 def logout_view(request):
     logout(request)
     return JsonResponse({'authenticated': False})
+
+
+@require_GET
+def payment_config(request):
+    from django.conf import settings
+    return JsonResponse({
+        'stripe_publishable_key': settings.STRIPE_PUBLISHABLE_KEY or None,
+        'paypal_client_id': settings.PAYPAL_CLIENT_ID or None,
+        'paypal_mode': settings.PAYPAL_MODE,
+        'stripe_enabled': bool(settings.STRIPE_SECRET_KEY),
+        'paypal_enabled': bool(
+            settings.PAYPAL_CLIENT_ID and settings.PAYPAL_CLIENT_SECRET
+        ),
+    })
+
+
+@require_GET
+def order_detail(request, pk):
+    order = get_object_or_404(Order.objects.prefetch_related('items'), pk=pk)
+    return JsonResponse({'order': _serialize_order_detail(order)})
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def order_pay_stripe(request, pk):
+    order = get_object_or_404(Order.objects.prefetch_related('items'), pk=pk)
+    try:
+        result = create_stripe_checkout_session(order)
+    except PaymentConfigurationError as exc:
+        return _json_error(str(exc), status=503)
+    except ValueError as exc:
+        return _json_error(str(exc))
+    return JsonResponse({
+        'provider': 'stripe',
+        'checkout_url': result['checkout_url'],
+        'session_id': result['session_id'],
+        'order_id': order.pk,
+    })
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def order_pay_paypal(request, pk):
+    order = get_object_or_404(Order.objects.prefetch_related('items'), pk=pk)
+    try:
+        result = create_paypal_order(order)
+    except PaymentConfigurationError as exc:
+        return _json_error(str(exc), status=503)
+    except ValueError as exc:
+        return _json_error(str(exc))
+    except requests.HTTPError as exc:
+        return _json_error(f'PayPal error: {exc}', status=502)
+    return JsonResponse({
+        'provider': 'paypal',
+        'approval_url': result['approval_url'],
+        'paypal_order_id': result['paypal_order_id'],
+        'order_id': order.pk,
+    })
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def order_paypal_capture(request, pk):
+    """Call after customer approves PayPal (return URL) if webhook is delayed."""
+    order = get_object_or_404(Order.objects.prefetch_related('items'), pk=pk)
+    try:
+        order = capture_paypal_order(order)
+    except PaymentConfigurationError as exc:
+        return _json_error(str(exc), status=503)
+    except ValueError as exc:
+        return _json_error(str(exc))
+    except requests.HTTPError as exc:
+        return _json_error(f'PayPal capture failed: {exc}', status=502)
+    return JsonResponse({'order': _serialize_order_detail(order)})
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def stripe_webhook(request):
+    signature = request.META.get('HTTP_STRIPE_SIGNATURE', '')
+    try:
+        order = handle_stripe_webhook(request.body, signature)
+    except Exception as exc:
+        return _json_error(str(exc), status=400)
+    return JsonResponse({'received': True, 'order_id': order.pk if order else None})
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def paypal_webhook(request):
+    payload, error = _parse_json(request)
+    if error:
+        return error
+    try:
+        order = handle_paypal_webhook(payload)
+    except Exception as exc:
+        return _json_error(str(exc), status=400)
+    return JsonResponse({'received': True, 'order_id': order.pk if order else None})
 
 
 @require_GET

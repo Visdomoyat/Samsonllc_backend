@@ -1,64 +1,88 @@
-# Purchases API — Frontend integration
+# Purchases & payments API
 
 Base URL: `http://127.0.0.1:8000/api`
 
-Admin requests: `credentials: 'include'` and CSRF header from cookie after `GET /api/auth/session/`.
+Set keys in environment (see `.env.example`). Load with `export $(cat .env | xargs)` or pipenv `--env`.
 
-## Customer checkout (public)
+## Payment config (frontend)
 
-### `POST /api/orders/`
-
-```json
-{
-  "customer_name": "Jane Doe",
-  "customer_email": "jane@example.com",
-  "shipping_address": {
-    "line1": "123 Main St",
-    "line2": "",
-    "city": "Boston",
-    "state": "MA",
-    "postal_code": "02101",
-    "country": "US"
-  },
-  "items": [
-    { "product_id": 1, "quantity": 2 }
-  ]
-}
-```
-
-Response `201`: `{ "order": { ...full order... } }`
-
-## Admin — purchased orders
-
-### `GET /api/admin/orders/`
-
-Query: `?email=` `?status=paid`
-
-### `GET /api/admin/orders/<id>/`
-
-### `PATCH /api/admin/orders/<id>/`
+### `GET /api/config/payments/`
 
 ```json
 {
-  "status": "shipped",
-  "tracking_number": "1Z999AA10123456784"
+  "stripe_publishable_key": "pk_test_...",
+  "paypal_client_id": "...",
+  "paypal_mode": "sandbox",
+  "stripe_enabled": true,
+  "paypal_enabled": true
 }
 ```
 
-### `POST /api/admin/orders/<id>/send-tracking/`
+## Checkout flow
+
+### 1. `POST /api/orders/` — create order (`status: pending`)
+
+Same body as before (customer, shipping, items).
+
+### 2a. Pay with Stripe — `POST /api/orders/<id>/pay/stripe/`
 
 ```json
-{ "tracking_number": "1Z999AA10123456784" }
+{
+  "checkout_url": "https://checkout.stripe.com/...",
+  "session_id": "cs_...",
+  "order_id": 12
+}
 ```
 
-Sends email to `customer_email`. Sets `tracking_emailed_at`. In dev, email prints to the Django console.
+Redirect customer to `checkout_url`. On success, Stripe webhook marks order **paid**.
 
-## Auth
+### 2b. Pay with PayPal — `POST /api/orders/<id>/pay/paypal/`
 
-- `POST /api/auth/login/`
-- `GET /api/auth/session/`
-- `POST /api/auth/logout/`
+```json
+{
+  "approval_url": "https://www.sandbox.paypal.com/...",
+  "paypal_order_id": "...",
+  "order_id": 12
+}
+```
 
-## Products (catalog)
+Redirect to `approval_url`. After approval:
 
-- `GET /api/products/`
+- Webhook captures payment, **or**
+- `POST /api/orders/<id>/paypal/capture/` from your success page
+
+### 3. `GET /api/orders/<id>/` — order status (thank-you page)
+
+## Webhooks (backend only)
+
+| URL | Provider |
+|-----|----------|
+| `POST /api/webhooks/stripe/` | Stripe `checkout.session.completed` |
+| `POST /api/webhooks/paypal/` | PayPal `CHECKOUT.ORDER.APPROVED`, `PAYMENT.CAPTURE.COMPLETED` |
+
+**Stripe local testing:**
+
+```bash
+stripe listen --forward-to localhost:8000/api/webhooks/stripe/
+```
+
+Use the printed `whsec_...` as `STRIPE_WEBHOOK_SECRET`.
+
+**PayPal:** Register webhook URL in PayPal Developer Dashboard → your ngrok/public URL + `/api/webhooks/paypal/`.
+
+## Admin (paid orders)
+
+`GET /api/admin/orders/?status=paid` — requires admin session (`credentials: 'include'`).
+
+Includes `payment_provider`, `paid_at`, `is_paid`.
+
+## Frontend summary
+
+```
+1. POST /api/orders/           → order id
+2. POST /api/orders/:id/pay/stripe/  OR  pay/paypal/
+3. Redirect to checkout_url / approval_url
+4. Success page: GET /api/orders/:id/  (+ POST paypal/capture for PayPal if needed)
+```
+
+Admin Purchased tab: only show `status=paid` (or filter tabs).
