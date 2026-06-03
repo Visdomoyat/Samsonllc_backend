@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Purchased — Samson LLC{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/shop.css' %}">
+  <link rel="stylesheet" href="{% static 'css/purchased.css' %}">
+{% endblock %}
+
+{% block content %}
+  <div class="shop-header">
+    <h1 class="shop-title">Purchased orders</h1>
+  </div>
+
+  <div class="purchased-filters">
+    <div class="status-tabs">
+      <a href="{% url 'purchased' %}" class="status-tab{% if not status_filter %} is-active{% endif %}">All</a>
+      {% for value, label in status_choices %}
+        <a
+          href="{% url 'purchased' %}?status={{ value }}"
+          class="status-tab{% if status_filter == value %} is-active{% endif %}"
+        >{{ label }}</a>
+      {% endfor %}
+    </div>
+
+    <form class="email-filter-form" method="get" action="{% url 'purchased' %}">
+      {% if status_filter %}
+        <input type="hidden" name="status" value="{{ status_filter }}">
+      {% endif %}
+      <input
+        type="search"
+        name="email"
+        placeholder="Search by email…"
+        value="{{ email_filter }}"
+        class="form-input"
+      >
+      <button type="submit" class="btn btn-secondary">Search</button>
+    </form>
+  </div>
+
+  {% if orders %}
+    <div class="order-list">
+      {% for order in orders %}
+        <article class="order-card">
+          <header class="order-card-header">
+            <div>
+              <h2 class="order-id">Order #{{ order.pk }}</h2>
+              <p class="order-meta">{{ order.created_at|date:"M j, Y g:i A" }}</p>
+            </div>
+            <span class="status-badge status-badge--{{ order.status }}">{{ order.get_status_display }}</span>
+          </header>
+
+          <div class="order-grid">
+            <section>
+              <h3 class="order-section-title">Customer</h3>
+              <p><strong>{{ order.customer_name }}</strong></p>
+              <p><a href="mailto:{{ order.customer_email }}">{{ order.customer_email }}</a></p>
+              {% if order.payment_provider %}
+                <p class="order-meta">Paid via {{ order.get_payment_provider_display }}{% if order.paid_at %} · {{ order.paid_at|date:"M j, Y g:i A" }}{% endif %}</p>
+              {% endif %}
+            </section>
+
+            <section>
+              <h3 class="order-section-title">Shipping</h3>
+              <p>{{ order.shipping_line1 }}</p>
+              {% if order.shipping_line2 %}<p>{{ order.shipping_line2 }}</p>{% endif %}
+              <p>{{ order.shipping_city }}, {{ order.shipping_state }} {{ order.shipping_postal_code }}</p>
+              <p>{{ order.shipping_country }}</p>
+            </section>
+
+            <section>
+              <h3 class="order-section-title">Products</h3>
+              <ul class="order-items">
+                {% for item in order.items.all %}
+                  <li>
+                    {{ item.product_name }} × {{ item.quantity }}
+                    <span class="order-item-price">${{ item.line_total|floatformat:2 }}</span>
+                  </li>
+                {% endfor %}
+              </ul>
+              <p class="order-total"><strong>Total:</strong> ${{ order.total|floatformat:2 }}</p>
+            </section>
+          </div>
+
+          <footer class="order-card-footer">
+            <form
+              class="order-update-form"
+              method="post"
+              action="{% url 'purchased_order_update' order.pk %}"
+            >
+              {% csrf_token %}
+              <label>
+                Status
+                <select name="status" class="form-input">
+                  {% for value, label in status_choices %}
+                    <option value="{{ value }}"{% if order.status == value %} selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>
+                Tracking #
+                <input
+                  type="text"
+                  name="tracking_number"
+                  class="form-input"
+                  value="{{ order.tracking_number }}"
+                  placeholder="Tracking number"
+                >
+              </label>
+              <button type="submit" class="btn btn-secondary">Save</button>
+            </form>
+
+            <form
+              class="order-tracking-email-form"
+              method="post"
+              action="{% url 'purchased_send_tracking' order.pk %}"
+              onsubmit="return confirm('Send tracking email to {{ order.customer_email|escapejs }}?');"
+            >
+              {% csrf_token %}
+              <input type="hidden" name="tracking_number" value="{{ order.tracking_number }}">
+              <button
+                type="submit"
+                class="btn btn-primary"
+                {% if not order.tracking_number %}disabled title="Add tracking number first"{% endif %}
+              >
+                Email tracking to customer
+              </button>
+              {% if order.tracking_emailed_at %}
+                <span class="tracking-sent">Sent {{ order.tracking_emailed_at|date:"M j, Y g:i A" }}</span>
+              {% endif %}
+            </form>
+          </footer>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="shop-empty">No orders found{% if status_filter %} with status “{{ status_filter }}”{% endif %}.</p>
+  {% endif %}
+{% endblock %}
