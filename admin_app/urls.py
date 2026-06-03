@@ -18,5 +18,11 @@ urlpatterns = [
     path('shop/<int:pk>/edit/', views.product_edit, name='product_edit'),
     path('shop/<int:pk>/delete/', views.product_delete, name='product_delete'),
     path('purchased/', views.purchased, name='purchased'),
+    path('purchased/<int:pk>/update/', views.purchased_order_update, name='purchased_order_update'),
+    path(
+        'purchased/<int:pk>/send-tracking/',
+        views.purchased_send_tracking,
+        name='purchased_send_tracking',
+    ),
     path('transactions/', views.transactions, name='transactions'),
 ]

@@ -8,8 +8,8 @@ django = "*"
 pillow = "*"
 psycopg2-binary = "*"
 django-cors-headers = "*"
-stripe = "*"
 requests = "*"
+stripe = "*"
 
 [dev-packages]
 

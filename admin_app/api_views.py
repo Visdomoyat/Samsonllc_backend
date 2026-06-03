@@ -310,7 +310,9 @@ def order_create(request):
             if quantity < 1:
                 return _json_error('quantity must be at least 1')
 
-            product = get_object_or_404(Product, pk=product_id)
+            product = Product.objects.filter(pk=product_id).first()
+            if product is None:
+                return _json_error(f'Product {product_id} not found', status=404)
             OrderItem.objects.create(
                 order=order,
                 product=product,
