@@ -7,26 +7,24 @@ from .models import Order, Product
 from .services import send_tracking_email
 
 
-@login_required
-def landing(request):
-    return render(request, 'landing.html')
-
-
-@login_required
-def search(request):
-    query = request.GET.get('q', '').strip()
-    return render(request, 'landing.html', {'search_query': query})
-
 
 @login_required
 def shop(request):
+    query = (request.GET.get('q') or '').strip()
     products = list(Product.objects.all())
+    if query:
+        products = [
+            p for p in products
+            if query.lower() in p.name.lower()
+            or query.lower() in (p.description or '').lower()
+        ]
     product_rows = [
         products[i:i + 4] for i in range(0, len(products), 4)
     ]
     return render(request, 'shop.html', {
         'products': products,
         'product_rows': product_rows,
+        'search_query': query,
     })
 
 

@@ -10,9 +10,9 @@ urlpatterns = [
         authentication_form=LoginForm,
         redirect_authenticated_user=True,
     ), name='login'),
-    path('home/', views.landing, name='landing'),
+ 
     path('logout/', LogoutView.as_view(), name='logout'),
-    path('search/', views.search, name='search'),
+    
     path('shop/', views.shop, name='shop'),
     path('shop/add/', views.product_create, name='product_create'),
     path('shop/<int:pk>/edit/', views.product_edit, name='product_edit'),
