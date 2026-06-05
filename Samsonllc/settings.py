@@ -165,7 +165,7 @@ STORAGES = {
 }
 if not DEBUG:
     STORAGES["staticfiles"]["BACKEND"] = (
-        "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        "whitenoise.storage.CompressedStaticFilesStorage"
     )
 
 MEDIA_URL = 'media/'
