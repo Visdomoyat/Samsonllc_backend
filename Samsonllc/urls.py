@@ -25,5 +25,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# User uploads (product images). Required in production — Render has no separate media server.
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
