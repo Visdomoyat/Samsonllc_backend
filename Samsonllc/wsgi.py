@@ -12,15 +12,21 @@ from pathlib import Path
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Samsonllc.settings")
 
-# Render often runs `gunicorn Samsonllc.wsgi` without ./start.sh, so staticfiles
-# may never be built. Collect once when the output folder is missing.
-_static_root = Path(__file__).resolve().parent.parent / "staticfiles"
-if not _static_root.exists() or not any(_static_root.iterdir()):
+# Render often skips ./start.sh and only runs `gunicorn Samsonllc.wsgi`.
+# Run migrate + collectstatic once at startup when needed.
+_project_root = Path(__file__).resolve().parent.parent
+_static_root = _project_root / "staticfiles"
+_startup_marker = _project_root / ".django_startup_complete"
+
+if not _startup_marker.exists():
     import django
     from django.core.management import call_command
 
     django.setup()
-    call_command("collectstatic", interactive=False, verbosity=1)
+    call_command("migrate", interactive=False, verbosity=1)
+    if not _static_root.exists() or not any(_static_root.iterdir()):
+        call_command("collectstatic", interactive=False, verbosity=1)
+    _startup_marker.touch()
 
 from django.core.wsgi import get_wsgi_application
 

@@ -13,6 +13,7 @@ stripe = "*"
 dj-database-url = "*"
 gunicorn = "*"
 whitenoise = "*"
+python-dotenv = "*"
 
 [dev-packages]
 
