@@ -1,2 +1,6 @@
 .env
 node_modules
+staticfiles/
+__pycache__/
+*.pyc
+media/
