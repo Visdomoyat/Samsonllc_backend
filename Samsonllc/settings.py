@@ -167,6 +167,7 @@ if not DEBUG:
     STORAGES["staticfiles"]["BACKEND"] = (
         "whitenoise.storage.CompressedStaticFilesStorage"
     )
+    WHITENOISE_MAX_AGE = 31536000
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
