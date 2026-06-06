@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'storages',
 ]
 
 MIDDLEWARE = [
@@ -174,6 +175,37 @@ if not DEBUG:
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Product uploads — use AWS S3 on Render when AWS_STORAGE_BUCKET_NAME is set.
+# See docs/AWS_S3_SETUP.md for bucket, IAM, and Render env vars.
+_AWS_BUCKET = os.environ.get("AWS_STORAGE_BUCKET_NAME", "").strip()
+if _AWS_BUCKET:
+    AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    if not AWS_ACCESS_KEY_ID or not AWS_SECRET_ACCESS_KEY:
+        raise ImproperlyConfigured(
+            "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are required when "
+            "AWS_STORAGE_BUCKET_NAME is set."
+        )
+
+    AWS_STORAGE_BUCKET_NAME = _AWS_BUCKET
+    AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "us-east-1")
+    AWS_S3_SIGNATURE_VERSION = "s3v4"
+    AWS_DEFAULT_ACL = None
+    AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
+    AWS_QUERYSTRING_AUTH = False
+    AWS_LOCATION = os.environ.get("AWS_LOCATION", "media")
+
+    STORAGES["default"]["BACKEND"] = "storages.backends.s3.S3Storage"
+
+    _custom_domain = os.environ.get("AWS_S3_CUSTOM_DOMAIN", "").strip()
+    if _custom_domain:
+        MEDIA_URL = f"https://{_custom_domain}/"
+    else:
+        MEDIA_URL = (
+            f"https://{AWS_STORAGE_BUCKET_NAME}.s3."
+            f"{AWS_S3_REGION_NAME}.amazonaws.com/{AWS_LOCATION}/"
+        )
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
