@@ -1,8 +1,9 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import update_session_auth_hash
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import ProductForm
+from .forms import AccountPasswordChangeForm, ProductForm, UsernameChangeForm
 from .models import Order, Product
 from .services import send_tracking_email
 
@@ -128,3 +129,34 @@ def purchased_send_tracking(request, pk):
 @login_required
 def transactions(request):
     return render(request, 'landing.html')
+
+
+@login_required
+def account_settings(request):
+    username_form = UsernameChangeForm(instance=request.user)
+    password_form = AccountPasswordChangeForm(user=request.user)
+
+    if request.method == 'POST':
+        form_type = request.POST.get('form_type')
+
+        if form_type == 'username':
+            username_form = UsernameChangeForm(request.POST, instance=request.user)
+            if username_form.is_valid():
+                username_form.save()
+                messages.success(request, 'Username updated successfully.')
+                return redirect('account_settings')
+            messages.error(request, 'Please fix the errors below.')
+
+        elif form_type == 'password':
+            password_form = AccountPasswordChangeForm(user=request.user, data=request.POST)
+            if password_form.is_valid():
+                user = password_form.save()
+                update_session_auth_hash(request, user)
+                messages.success(request, 'Password updated successfully.')
+                return redirect('account_settings')
+            messages.error(request, 'Please fix the errors below.')
+
+    return render(request, 'account_settings.html', {
+        'username_form': username_form,
+        'password_form': password_form,
+    })

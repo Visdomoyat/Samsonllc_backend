@@ -25,4 +25,5 @@ urlpatterns = [
         name='purchased_send_tracking',
     ),
     path('transactions/', views.transactions, name='transactions'),
+    path('account/', views.account_settings, name='account_settings'),
 ]

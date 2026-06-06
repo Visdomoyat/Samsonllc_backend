@@ -1,8 +1,10 @@
 from django import forms
-
-from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth import get_user_model
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 
 from .models import Product
+
+User = get_user_model()
 
 
 class LoginForm(AuthenticationForm):
@@ -43,3 +45,40 @@ class ProductForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
             self.fields['image'].required = False
+
+
+class UsernameChangeForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ('username',)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['username'].widget.attrs.update({
+            'class': 'form-input',
+            'autocomplete': 'username',
+        })
+
+    def clean_username(self):
+        username = self.cleaned_data['username'].strip()
+        if (
+            User.objects.exclude(pk=self.instance.pk)
+            .filter(username__iexact=username)
+            .exists()
+        ):
+            raise forms.ValidationError('That username is already taken.')
+        return username
+
+
+class AccountPasswordChangeForm(PasswordChangeForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name, autocomplete in (
+            ('old_password', 'current-password'),
+            ('new_password1', 'new-password'),
+            ('new_password2', 'new-password'),
+        ):
+            self.fields[field_name].widget.attrs.update({
+                'class': 'form-input',
+                'autocomplete': autocomplete,
+            })

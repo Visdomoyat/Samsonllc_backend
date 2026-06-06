@@ -290,3 +290,21 @@
     display: none;
   }
 }
+
+.account-settings {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 560px;
+}
+
+.account-settings-heading {
+  margin: 0 0 0.35rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.account-settings-section .form-hint {
+  margin: 0 0 1rem;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
