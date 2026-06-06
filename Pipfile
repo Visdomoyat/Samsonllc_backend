@@ -14,8 +14,8 @@ dj-database-url = "*"
 gunicorn = "*"
 whitenoise = "*"
 python-dotenv = "*"
-django-storages = "*"
 boto3 = "*"
+django-storages = "*"
 
 [dev-packages]
 
