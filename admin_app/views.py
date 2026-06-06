@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import update_session_auth_hash
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
 from .forms import AccountPasswordChangeForm, ProductForm, UsernameChangeForm
 from .models import Order, Product
@@ -132,6 +133,30 @@ def purchased_send_tracking(request, pk):
         except Exception as exc:
             messages.error(request, f'Failed to send email: {exc}')
     return redirect('purchased')
+
+
+def _purchased_redirect(request):
+    url = reverse('purchased')
+    params = []
+    status = (request.POST.get('return_status') or '').strip()
+    email = (request.POST.get('return_email') or '').strip()
+    if status:
+        params.append(f'status={status}')
+    if email:
+        params.append(f'email={email}')
+    if params:
+        url += '?' + '&'.join(params)
+    return redirect(url)
+
+
+@login_required
+def purchased_order_delete(request, pk):
+    order = get_object_or_404(Order, pk=pk)
+    if request.method == 'POST':
+        order_id = order.pk
+        order.delete()
+        messages.success(request, f'Order #{order_id} deleted.')
+    return _purchased_redirect(request)
 
 
 @login_required

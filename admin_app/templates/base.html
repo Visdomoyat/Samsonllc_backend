@@ -61,7 +61,7 @@
       <nav class="main-nav" id="main-nav" aria-label="Main">
         {% if user.is_authenticated %}
           <a href="{% url 'shop' %}"{% if request.resolver_match.url_name == 'shop' or request.resolver_match.url_name == 'product_create' or request.resolver_match.url_name == 'product_edit' %} class="is-active"{% endif %}>Shop</a>
-          <a href="{% url 'purchased' %}"{% if request.resolver_match.url_name == 'purchased' or request.resolver_match.url_name == 'purchased_order_update' or request.resolver_match.url_name == 'purchased_send_tracking' %} class="is-active"{% endif %}>Purchased</a>
+          <a href="{% url 'purchased' %}"{% if request.resolver_match.url_name == 'purchased' or request.resolver_match.url_name == 'purchased_order_update' or request.resolver_match.url_name == 'purchased_send_tracking' or request.resolver_match.url_name == 'purchased_order_delete' %} class="is-active"{% endif %}>Purchased</a>
           <a href="{% url 'account_settings' %}"{% if request.resolver_match.url_name == 'account_settings' %} class="is-active"{% endif %}>Account</a>
           <form class="nav-logout-form" action="{% url 'logout' %}" method="post">
             {% csrf_token %}

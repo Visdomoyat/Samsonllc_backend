@@ -24,6 +24,11 @@ urlpatterns = [
         views.purchased_send_tracking,
         name='purchased_send_tracking',
     ),
+    path(
+        'purchased/<int:pk>/delete/',
+        views.purchased_order_delete,
+        name='purchased_order_delete',
+    ),
     path('transactions/', views.transactions, name='transactions'),
     path('account/', views.account_settings, name='account_settings'),
 ]
