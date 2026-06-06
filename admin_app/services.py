@@ -5,9 +5,24 @@ from django.utils import timezone
 from .models import Order
 
 
+def ensure_email_can_deliver() -> None:
+    """Console backend only prints to logs — customers never receive mail."""
+    if settings.EMAIL_BACKEND == "django.core.mail.backends.console.EmailBackend":
+        if settings.DEBUG:
+            return
+        raise RuntimeError(
+            "Email is not configured for production. On Render, set EMAIL_HOST, "
+            "EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, EMAIL_PORT, and DEFAULT_FROM_EMAIL."
+        )
+    if not settings.EMAIL_HOST:
+        raise RuntimeError("EMAIL_HOST is not configured.")
+
+
 def send_tracking_email(order: Order) -> None:
     if not order.tracking_number:
         raise ValueError('Tracking number is required before sending email.')
+
+    ensure_email_can_deliver()
 
     subject = f'Eliteforge — Tracking for order #{order.pk}'
     message = (

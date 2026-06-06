@@ -1,6 +1,7 @@
 import json
 
 import requests
+from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
@@ -393,8 +394,18 @@ def admin_order_send_tracking(request, pk):
         order.status = Order.Status.SHIPPED
         order.save(update_fields=['status', 'updated_at'])
 
+    console_only = (
+        settings.EMAIL_BACKEND == 'django.core.mail.backends.console.EmailBackend'
+    )
     return JsonResponse({
         'sent': True,
+        'delivered': not console_only,
+        'warning': (
+            'Email logged to server console only (SMTP not configured). '
+            'Customer did not receive a message.'
+            if console_only
+            else None
+        ),
         'to': order.customer_email,
         'order': _serialize_order_detail(order),
     })

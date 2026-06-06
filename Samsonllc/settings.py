@@ -223,9 +223,24 @@ CSRF_TRUSTED_ORIGINS = list(FRONTEND_ORIGINS)
 if _render_hostname:
     CSRF_TRUSTED_ORIGINS.append(f"https://{_render_hostname}")
 
-# Email — console backend in dev; use SMTP in production
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'orders@samsonllc.com'
+# Email — console locally unless SMTP env vars are set (required on Render for real delivery)
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "orders@eliteforge.com")
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "").strip()
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "").strip()
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
+EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "False").lower() in ("true", "1", "yes")
+
+_email_backend = os.environ.get("EMAIL_BACKEND", "").strip()
+if _email_backend:
+    EMAIL_BACKEND = _email_backend
+elif EMAIL_HOST:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Customer storefront (Stripe/PayPal return URLs)
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')

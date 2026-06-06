@@ -4,21 +4,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Samson LLC{% endblock %}</title>
+  <title>{% block title %}Eliteforge Admin{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="{% static 'images/logo.jpeg' %}" type="image/jpeg">
   <link rel="apple-touch-icon" href="{% static 'images/logo.jpeg' %}">
-  <link rel="stylesheet" href="{% static 'css/base.css' %}">
+  <link rel="stylesheet" href="{% static 'css/base.css' %}?v=3">
   {% block extra_css %}{% endblock %}
 </head>
 <body>
+  <div class="promo-strip">Eliteforge Admin · Product &amp; order management</div>
+
   <header class="site-header" id="site-header">
     <div class="header-inner">
       <div class="header-row">
-        <a class="brand" href="{% url 'shop' %}" aria-label="Samson LLC home">
+        <a class="brand" href="{% url 'shop' %}" aria-label="Eliteforge admin home">
           <img
             class="brand-logo"
             src="{% static 'images/logo.jpeg' %}"
-            alt="Samson LLC"
+            alt="Eliteforge"
           >
         </a>
 
@@ -39,6 +44,10 @@
       </div>
 
       <form class="search-form" action="{% url 'shop' %}" method="get" role="search">
+        <svg class="search-form-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <path d="m20 20-3.5-3.5"></path>
+        </svg>
         <input
           type="search"
           name="q"
@@ -76,6 +85,10 @@
   <main class="site-main">
     {% block content %}{% endblock %}
   </main>
+
+  <footer class="site-footer">
+    <strong>Eliteforge</strong> · Admin portal for staff use only
+  </footer>
 
   <script src="{% static 'js/base.js' %}" defer></script>
   {% block extra_js %}{% endblock %}

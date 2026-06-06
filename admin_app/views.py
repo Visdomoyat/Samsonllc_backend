@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import update_session_auth_hash
@@ -120,7 +121,14 @@ def purchased_send_tracking(request, pk):
             if order.status == Order.Status.PAID:
                 order.status = Order.Status.SHIPPED
                 order.save(update_fields=['status', 'updated_at'])
-            messages.success(request, f'Tracking email sent to {order.customer_email}.')
+            if settings.EMAIL_BACKEND == 'django.core.mail.backends.console.EmailBackend':
+                messages.warning(
+                    request,
+                    f'Email logged to server console only (SMTP not configured). '
+                    f'{order.customer_email} did not receive a message.',
+                )
+            else:
+                messages.success(request, f'Tracking email sent to {order.customer_email}.')
         except Exception as exc:
             messages.error(request, f'Failed to send email: {exc}')
     return redirect('purchased')

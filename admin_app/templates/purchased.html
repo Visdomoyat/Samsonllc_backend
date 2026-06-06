@@ -1,16 +1,20 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Purchased — Samson LLC{% endblock %}
+{% block title %}Purchased — Eliteforge Admin{% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'css/shop.css' %}">
-  <link rel="stylesheet" href="{% static 'css/purchased.css' %}">
+  <link rel="stylesheet" href="{% static 'css/shop.css' %}?v=3">
+  <link rel="stylesheet" href="{% static 'css/purchased.css' %}?v=3">
 {% endblock %}
 
 {% block content %}
-  <div class="shop-header">
-    <h1 class="shop-title">Purchased orders</h1>
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <p class="page-eyebrow">Orders</p>
+      <h1 class="page-hero-title">Purchased orders</h1>
+      <p class="page-hero-subtitle">Review payments, update status, and send tracking to customers.</p>
+    </div>
   </div>
 
   <div class="purchased-filters">
@@ -79,7 +83,7 @@
                   </li>
                 {% endfor %}
               </ul>
-              <p class="order-total"><strong>Total:</strong> ${{ order.total|floatformat:2 }}</p>
+              <p class="order-total">Total: ${{ order.total|floatformat:2 }}</p>
             </section>
           </div>
 

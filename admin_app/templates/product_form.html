@@ -1,16 +1,24 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}{{ page_title }} — Samson LLC{% endblock %}
+{% block title %}{{ page_title }} — Eliteforge Admin{% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'css/shop.css' %}">
+  <link rel="stylesheet" href="{% static 'css/shop.css' %}?v=3">
 {% endblock %}
 
 {% block content %}
-  <div class="shop-header">
-    <h1 class="shop-title">{{ page_title }}</h1>
-    <a href="{% url 'shop' %}" class="btn btn-secondary">Back to shop</a>
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <p class="page-eyebrow">Inventory</p>
+      <div class="shop-header">
+        <div>
+          <h1 class="page-hero-title">{{ page_title }}</h1>
+          <p class="page-hero-subtitle">Update product details and images for the storefront.</p>
+        </div>
+        <a href="{% url 'shop' %}" class="btn btn-secondary">Back to shop</a>
+      </div>
+    </div>
   </div>
 
   <form class="product-form" method="post" enctype="multipart/form-data">
