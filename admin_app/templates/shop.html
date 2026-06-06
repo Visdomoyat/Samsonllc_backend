@@ -1,61 +1,61 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Shop — Eliteforge{% endblock %}
+{% block title %}Shop — Eliteforge Admin{% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'css/shop.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'css/shop.css' %}?v=3">
 {% endblock %}
 
 {% block content %}
-  <div class="shop-header">
-    <h1 class="shop-title">Shop</h1>
-    <a href="{% url 'product_create' %}" class="btn btn-primary">Add product</a>
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <p class="page-eyebrow">Inventory</p>
+      <div class="shop-header">
+        <div>
+          <h1 class="page-hero-title">Shop</h1>
+          <p class="page-hero-subtitle">Manage product listings shown on your storefront.</p>
+        </div>
+        <a href="{% url 'product_create' %}" class="btn btn-primary">Add product</a>
+      </div>
+    </div>
   </div>
 
   {% if products %}
-    <div class="product-grid">
-      {% for row in product_rows %}
-        <div class="product-row">
-          {% for product in row %}
-            <article class="product-item">
-              <div class="product-image-wrap">
-                {% if product.image %}
-                  <img
-                    class="product-image"
-                    src="{{ product.image.url }}"
-                    alt="{{ product.name }}"
-                  >
-                {% else %}
-                  <div class="product-image product-image--placeholder">No image</div>
-                {% endif %}
-              </div>
+    <div class="product-cards">
+      {% for product in products %}
+        <article class="product-card">
+          <div class="product-card-image-wrap">
+            {% if product.image %}
+              <img
+                class="product-card-image"
+                src="{{ product.image.url }}"
+                alt="{{ product.name }}"
+              >
+            {% else %}
+              <div class="product-card-image product-card-image--placeholder">No image</div>
+            {% endif %}
+          </div>
 
-              <div class="product-details">
-                <h2 class="product-name">{{ product.name }}</h2>
-                <p class="product-description">{{ product.description }}</p>
-                <p class="product-price">${{ product.price|floatformat:2 }}</p>
+          <div class="product-card-body">
+            <h2 class="product-card-name">{{ product.name }}</h2>
+            <p class="product-card-description">{{ product.description }}</p>
+            <p class="product-card-price">${{ product.price|floatformat:2 }}</p>
 
-                <div class="product-actions">
-                  <a href="{% url 'product_edit' product.pk %}" class="btn btn-secondary">Edit</a>
-                  <form
-                    class="product-delete-form"
-                    action="{% url 'product_delete' product.pk %}"
-                    method="post"
-                    onsubmit="return confirm('Delete {{ product.name|escapejs }}?');"
-                  >
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger">Delete</button>
-                  </form>
-                </div>
-              </div>
-            </article>
-          {% endfor %}
-        </div>
-
-        {% if not forloop.last %}
-          <hr class="product-divider-h" aria-hidden="true">
-        {% endif %}
+            <div class="product-card-actions">
+              <a href="{% url 'product_edit' product.pk %}" class="btn btn-secondary btn-sm">Edit</a>
+              <form
+                class="product-delete-form"
+                action="{% url 'product_delete' product.pk %}"
+                method="post"
+                onsubmit="return confirm('Delete {{ product.name|escapejs }}?');"
+              >
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+              </form>
+            </div>
+          </div>
+        </article>
       {% endfor %}
     </div>
   {% else %}
