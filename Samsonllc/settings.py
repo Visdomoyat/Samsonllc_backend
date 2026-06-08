@@ -216,6 +216,10 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'shop'
 LOGOUT_REDIRECT_URL = 'login'
 
+# Admin HTML site — session expires after inactivity (default 10 minutes).
+SESSION_COOKIE_AGE = int(os.environ.get('SESSION_COOKIE_AGE', '600'))
+SESSION_SAVE_EVERY_REQUEST = True
+
 CORS_ALLOWED_ORIGINS = FRONTEND_ORIGINS
 CORS_ALLOW_CREDENTIALS = True
 
