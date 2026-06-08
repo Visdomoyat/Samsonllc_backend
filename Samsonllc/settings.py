@@ -226,6 +226,7 @@ if _render_hostname:
 # Email — console locally unless SMTP env vars are set (required on Render for real delivery)
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "orders@eliteforge.com")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
+CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "customerorder@eliteforgepeptides.com")
 
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "").strip()
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))

@@ -1,6 +1,7 @@
 import json
 
 import requests
+import stripe
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
@@ -20,7 +21,7 @@ from .payments import (
     handle_paypal_webhook,
     handle_stripe_webhook,
 )
-from .services import send_tracking_email
+from .services import send_contact_message, send_tracking_email
 
 
 def _json_error(message: str, status: int = 400) -> JsonResponse:
@@ -186,6 +187,10 @@ def order_pay_stripe(request, pk):
         return _json_error(str(exc), status=503)
     except ValueError as exc:
         return _json_error(str(exc))
+    except stripe.error.StripeError as exc:
+        return _json_error(f'Stripe error: {exc.user_message or exc}', status=502)
+    if not result.get('checkout_url'):
+        return _json_error('Stripe did not return a checkout URL.', status=502)
     return JsonResponse({
         'provider': 'stripe',
         'checkout_url': result['checkout_url'],
@@ -260,6 +265,37 @@ def product_list(request):
     return JsonResponse({
         'products': [_serialize_product(request, product) for product in products],
     })
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def contact_submit(request):
+    """Public contact form — sends to CONTACT_EMAIL."""
+    payload, error = _parse_json(request)
+    if error:
+        return error
+
+    name = (payload.get('name') or '').strip()
+    email = (payload.get('email') or '').strip()
+    message = (payload.get('message') or '').strip()
+
+    if not name:
+        return _json_error('Name is required')
+    if not email:
+        return _json_error('Email is required')
+    if '@' not in email or len(email) > 254:
+        return _json_error('Enter a valid email address')
+    if not message:
+        return _json_error('Message is required')
+    if len(message) > 5000:
+        return _json_error('Message is too long')
+
+    try:
+        send_contact_message(name, email, message)
+    except Exception as exc:
+        return _json_error(f'Could not send message: {exc}', status=502)
+
+    return JsonResponse({'ok': True})
 
 
 @csrf_exempt

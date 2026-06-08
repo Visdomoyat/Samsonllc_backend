@@ -50,6 +50,23 @@ def create_stripe_checkout_session(order: Order) -> dict:
     _order_must_be_payable(order)
     stripe.api_key = settings.STRIPE_SECRET_KEY
 
+    if order.stripe_checkout_session_id:
+        try:
+            existing = stripe.checkout.Session.retrieve(
+                order.stripe_checkout_session_id,
+            )
+            if existing.status == 'open' and existing.url:
+                return {
+                    'checkout_url': existing.url,
+                    'session_id': existing.id,
+                }
+        except stripe.error.StripeError:
+            logger.warning(
+                'Could not reuse Stripe session %s for order %s',
+                order.stripe_checkout_session_id,
+                order.pk,
+            )
+
     line_items = []
     for item in order.items.all():
         line_items.append({
