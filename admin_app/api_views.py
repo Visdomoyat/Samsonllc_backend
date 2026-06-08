@@ -20,6 +20,10 @@ from .payments import (
     create_stripe_checkout_session,
     handle_paypal_webhook,
     handle_stripe_webhook,
+    paypal_checkout_blocks_stripe,
+    release_paypal_checkout,
+    release_stripe_checkout,
+    stripe_checkout_blocks_paypal,
 )
 from .services import send_contact_message, send_tracking_email
 
@@ -98,6 +102,8 @@ def _serialize_order_detail(order: Order) -> dict:
         'shipping_address': _serialize_shipping(order),
         'items': [_serialize_order_item(item) for item in order.items.all()],
         'updated_at': order.updated_at.isoformat(),
+        'stripe_checkout_pending': stripe_checkout_blocks_paypal(order),
+        'paypal_checkout_pending': paypal_checkout_blocks_stripe(order),
     })
     return data
 
@@ -196,6 +202,36 @@ def order_pay_stripe(request, pk):
         'checkout_url': result['checkout_url'],
         'session_id': result['session_id'],
         'order_id': order.pk,
+    })
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def order_release_stripe(request, pk):
+    """Expire an abandoned Stripe Checkout session so PayPal can be used."""
+    order = get_object_or_404(Order.objects.prefetch_related('items'), pk=pk)
+    try:
+        released = release_stripe_checkout(order)
+    except stripe.error.StripeError as exc:
+        return _json_error(f'Stripe error: {exc.user_message or exc}', status=502)
+    return JsonResponse({
+        'released': released,
+        'order': _serialize_order_detail(order),
+    })
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def order_release_paypal(request, pk):
+    """Release an abandoned PayPal Checkout so card payment can be used."""
+    order = get_object_or_404(Order.objects.prefetch_related('items'), pk=pk)
+    try:
+        released = release_paypal_checkout(order)
+    except requests.HTTPError as exc:
+        return _json_error(f'PayPal error: {exc}', status=502)
+    return JsonResponse({
+        'released': released,
+        'order': _serialize_order_detail(order),
     })
 
 

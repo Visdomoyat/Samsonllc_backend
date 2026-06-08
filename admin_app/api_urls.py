@@ -13,6 +13,16 @@ urlpatterns = [
     path('orders/', api_views.order_create, name='api_order_create'),
     path('orders/<int:pk>/', api_views.order_detail, name='api_order_detail'),
     path('orders/<int:pk>/pay/stripe/', api_views.order_pay_stripe, name='api_order_pay_stripe'),
+    path(
+        'orders/<int:pk>/pay/stripe/release/',
+        api_views.order_release_stripe,
+        name='api_order_release_stripe',
+    ),
+    path(
+        'orders/<int:pk>/pay/paypal/release/',
+        api_views.order_release_paypal,
+        name='api_order_release_paypal',
+    ),
     path('orders/<int:pk>/pay/paypal/', api_views.order_pay_paypal, name='api_order_pay_paypal'),
     path(
         'orders/<int:pk>/paypal/capture/',

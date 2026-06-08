@@ -30,6 +30,149 @@ def _order_must_be_payable(order: Order) -> None:
         raise ValueError('Order total must be greater than zero.')
 
 
+def stripe_checkout_blocks_paypal(order: Order) -> bool:
+    """True while Stripe Checkout is still open or completing for this order."""
+    if order.status != Order.Status.PENDING:
+        return False
+    if not order.stripe_checkout_session_id:
+        return False
+    if not settings.STRIPE_SECRET_KEY:
+        return order.payment_provider == Order.PaymentProvider.STRIPE
+
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    try:
+        session = stripe.checkout.Session.retrieve(order.stripe_checkout_session_id)
+    except stripe.error.StripeError:
+        logger.warning(
+            'Could not verify Stripe session %s for order %s',
+            order.stripe_checkout_session_id,
+            order.pk,
+        )
+        return order.payment_provider == Order.PaymentProvider.STRIPE
+
+    return session.status in ('open', 'complete')
+
+
+_PAYPAL_PENDING_STATUSES = frozenset({
+    'CREATED',
+    'SAVED',
+    'APPROVED',
+    'PAYER_ACTION_REQUIRED',
+    'COMPLETED',
+})
+
+
+def _retrieve_paypal_order(paypal_order_id: str) -> dict | None:
+    token = _paypal_access_token()
+    response = requests.get(
+        f'{_paypal_base_url()}/v2/checkout/orders/{paypal_order_id}',
+        headers={'Authorization': f'Bearer {token}'},
+        timeout=30,
+    )
+    if response.status_code == 404:
+        return None
+    response.raise_for_status()
+    return response.json()
+
+
+def _clear_paypal_checkout(order: Order) -> None:
+    order.paypal_order_id = ''
+    if order.payment_provider == Order.PaymentProvider.PAYPAL:
+        order.payment_provider = ''
+    order.save(update_fields=['paypal_order_id', 'payment_provider', 'updated_at'])
+
+
+def paypal_checkout_blocks_stripe(order: Order) -> bool:
+    """True while PayPal Checkout is still open or completing for this order."""
+    if order.status != Order.Status.PENDING:
+        return False
+    if not order.paypal_order_id:
+        return False
+    if not settings.PAYPAL_CLIENT_ID or not settings.PAYPAL_CLIENT_SECRET:
+        return order.payment_provider == Order.PaymentProvider.PAYPAL
+
+    try:
+        data = _retrieve_paypal_order(order.paypal_order_id)
+    except (PaymentConfigurationError, requests.HTTPError):
+        logger.warning(
+            'Could not verify PayPal order %s for order %s',
+            order.paypal_order_id,
+            order.pk,
+        )
+        return order.payment_provider == Order.PaymentProvider.PAYPAL
+
+    if data is None:
+        return False
+
+    return data.get('status') in _PAYPAL_PENDING_STATUSES
+
+
+def release_paypal_checkout(order: Order) -> bool:
+    """Release an abandoned PayPal Checkout so card payment can be used."""
+    if not order.paypal_order_id:
+        return False
+
+    try:
+        data = _retrieve_paypal_order(order.paypal_order_id)
+    except (PaymentConfigurationError, requests.HTTPError):
+        logger.warning(
+            'Could not release PayPal order %s for order %s',
+            order.paypal_order_id,
+            order.pk,
+        )
+        return False
+
+    if data is None:
+        _clear_paypal_checkout(order)
+        return True
+
+    status = data.get('status', '')
+    if status == 'VOIDED':
+        return False
+
+    if status == 'APPROVED':
+        token = _paypal_access_token()
+        response = requests.post(
+            f'{_paypal_base_url()}/v2/checkout/orders/{order.paypal_order_id}/void',
+            headers={
+                'Authorization': f'Bearer {token}',
+                'Content-Type': 'application/json',
+            },
+            timeout=30,
+        )
+        if response.ok:
+            return True
+
+    if status in ('CREATED', 'SAVED', 'PAYER_ACTION_REQUIRED'):
+        _clear_paypal_checkout(order)
+        return True
+
+    return False
+
+
+def release_stripe_checkout(order: Order) -> bool:
+    """Expire an open Stripe Checkout session so PayPal can be used."""
+    if not order.stripe_checkout_session_id or not settings.STRIPE_SECRET_KEY:
+        return False
+
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    try:
+        session = stripe.checkout.Session.retrieve(order.stripe_checkout_session_id)
+    except stripe.error.StripeError:
+        logger.warning(
+            'Could not release Stripe session %s for order %s',
+            order.stripe_checkout_session_id,
+            order.pk,
+        )
+        return False
+
+    if session.status != 'open':
+        return False
+
+    stripe.checkout.Session.expire(order.stripe_checkout_session_id)
+    return True
+
+
 def mark_order_paid(order: Order, provider: str, **extra_fields) -> Order:
     if order.status == Order.Status.PAID:
         return order
@@ -48,6 +191,11 @@ def create_stripe_checkout_session(order: Order) -> dict:
         raise PaymentConfigurationError('STRIPE_SECRET_KEY is not configured.')
 
     _order_must_be_payable(order)
+    if paypal_checkout_blocks_stripe(order):
+        raise ValueError(
+            'PayPal checkout is in progress for this order. '
+            'Complete or cancel PayPal payment before using card checkout.',
+        )
     stripe.api_key = settings.STRIPE_SECRET_KEY
 
     if order.stripe_checkout_session_id:
@@ -124,6 +272,11 @@ def _paypal_access_token() -> str:
 
 def create_paypal_order(order: Order) -> dict:
     _order_must_be_payable(order)
+    if stripe_checkout_blocks_paypal(order):
+        raise ValueError(
+            'Card checkout is in progress for this order. '
+            'Complete or cancel Stripe payment before using PayPal.',
+        )
     token = _paypal_access_token()
 
     total = format(order.total, '.2f')
