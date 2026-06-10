@@ -3,6 +3,40 @@ from decimal import Decimal
 from django.db import models
 
 
+class StackBlend(models.Model):
+    class Kind(models.TextChoices):
+        STACK = 'stack', 'Stack'
+        BLEND = 'blend', 'Blend'
+
+    name = models.CharField(max_length=200)
+    kind = models.CharField(
+        max_length=20,
+        choices=Kind.choices,
+        default=Kind.BLEND,
+    )
+    image = models.ImageField(upload_to='stack_blends/')
+    description = models.TextField(blank=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    is_active = models.BooleanField(
+        default=True,
+        help_text='Inactive items are hidden from the storefront.',
+    )
+    display_order = models.PositiveIntegerField(
+        default=0,
+        help_text='Lower numbers appear first on the landing page (top 4 shown).',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['display_order', '-created_at']
+        verbose_name = 'stack / blend'
+        verbose_name_plural = 'stacks & blends'
+
+    def __str__(self):
+        return self.name
+
+
 class Product(models.Model):
     name = models.CharField(max_length=200)
     image = models.ImageField(upload_to='products/')
@@ -78,6 +112,13 @@ class OrderItem(models.Model):
     )
     product = models.ForeignKey(
         Product,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='order_items',
+    )
+    stack_blend = models.ForeignKey(
+        StackBlend,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

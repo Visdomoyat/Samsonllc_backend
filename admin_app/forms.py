@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 
-from .models import Product
+from .models import Product, StackBlend
 
 User = get_user_model()
 
@@ -38,6 +38,50 @@ class ProductForm(forms.ModelForm):
                 'placeholder': '0.00',
                 'step': '0.01',
                 'min': '0',
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields['image'].required = False
+
+
+class StackBlendForm(forms.ModelForm):
+    class Meta:
+        model = StackBlend
+        fields = (
+            'name',
+            'kind',
+            'image',
+            'description',
+            'price',
+            'is_active',
+            'display_order',
+        )
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Stack or blend name',
+            }),
+            'kind': forms.Select(attrs={'class': 'form-input'}),
+            'image': forms.FileInput(attrs={'class': 'form-input-file'}),
+            'description': forms.Textarea(attrs={
+                'class': 'form-textarea',
+                'placeholder': 'Description for the storefront',
+                'rows': 4,
+            }),
+            'price': forms.NumberInput(attrs={
+                'class': 'form-input',
+                'placeholder': '0.00',
+                'step': '0.01',
+                'min': '0',
+            }),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+            'display_order': forms.NumberInput(attrs={
+                'class': 'form-input',
+                'min': '0',
+                'step': '1',
             }),
         }
 
