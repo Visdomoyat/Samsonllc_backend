@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Stacks &amp; Blends — Eliteforge Admin{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/shop.css' %}?v=3">
+{% endblock %}
+
+{% block content %}
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <p class="page-eyebrow">Storefront</p>
+      <div class="shop-header">
+        <div>
+          <h1 class="page-hero-title">Stacks &amp; blends</h1>
+          <p class="page-hero-subtitle">
+            Manage ready-made stacks and blends. The landing page shows up to 4 active items (lowest display order first).
+          </p>
+        </div>
+        <a href="{% url 'stack_blend_create' %}" class="btn btn-primary">Add stack / blend</a>
+      </div>
+    </div>
+  </div>
+
+  {% if stack_blends %}
+    <div class="product-cards">
+      {% for item in stack_blends %}
+        <article class="product-card">
+          <div class="product-card-image-wrap">
+            {% if item.image %}
+              <img
+                class="product-card-image"
+                src="{{ item.image.url }}"
+                alt="{{ item.name }}"
+              >
+            {% else %}
+              <div class="product-card-image product-card-image--placeholder">No image</div>
+            {% endif %}
+          </div>
+
+          <div class="product-card-body">
+            <p class="product-card-meta">{{ item.get_kind_display }}{% if not item.is_active %} · Hidden{% endif %}</p>
+            <h2 class="product-card-name">{{ item.name }}</h2>
+            <p class="product-card-description">{{ item.description }}</p>
+            <p class="product-card-price">${{ item.price|floatformat:2 }}</p>
+            <p class="form-hint">Display order: {{ item.display_order }}</p>
+
+            <div class="product-card-actions">
+              <a href="{% url 'stack_blend_edit' item.pk %}" class="btn btn-secondary btn-sm">Edit</a>
+              <form
+                class="product-delete-form"
+                action="{% url 'stack_blend_delete' item.pk %}"
+                method="post"
+                onsubmit="return confirm('Delete {{ item.name|escapejs }}?');"
+              >
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+              </form>
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="empty-state">No stacks or blends yet. Add one to feature it on the landing page.</p>
+  {% endif %}
+{% endblock %}
