@@ -9,6 +9,12 @@ urlpatterns = [
     path('auth/login/', api_views.login_view, name='api_login'),
     path('auth/logout/', api_views.logout_view, name='api_logout'),
     path('products/', api_views.product_list, name='api_product_list'),
+    path('stack-blends/', api_views.stack_blend_list, name='api_stack_blend_list'),
+    path(
+        'stack-blends/<int:pk>/',
+        api_views.stack_blend_detail,
+        name='api_stack_blend_detail',
+    ),
     path('contact/', api_views.contact_submit, name='api_contact_submit'),
     path('orders/', api_views.order_create, name='api_order_create'),
     path('orders/<int:pk>/', api_views.order_detail, name='api_order_detail'),
@@ -21,7 +27,7 @@ urlpatterns = [
     path(
         'orders/<int:pk>/pay/paypal/release/',
         api_views.order_release_paypal,
-        name='api_order_release_paypal',
+        name='api_order_release_paypal', 
     ),
     path('orders/<int:pk>/pay/paypal/', api_views.order_pay_paypal, name='api_order_pay_paypal'),
     path(

@@ -5,8 +5,13 @@ from django.contrib.auth import update_session_auth_hash
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
-from .forms import AccountPasswordChangeForm, ProductForm, UsernameChangeForm
-from .models import Order, Product
+from .forms import (
+    AccountPasswordChangeForm,
+    ProductForm,
+    StackBlendForm,
+    UsernameChangeForm,
+)
+from .models import Order, Product, StackBlend
 from .services import send_tracking_email
 
 
@@ -74,6 +79,59 @@ def product_delete(request, pk):
         product.delete()
         messages.success(request, 'Product deleted successfully.')
     return redirect('shop')
+
+
+@login_required
+def stack_blend_list(request):
+    stack_blends = list(StackBlend.objects.all())
+    return render(request, 'stack_blend_list.html', {
+        'stack_blends': stack_blends,
+    })
+
+
+@login_required
+def stack_blend_create(request):
+    if request.method == 'POST':
+        form = StackBlendForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Stack / blend added successfully.')
+            return redirect('stack_blend_list')
+    else:
+        form = StackBlendForm()
+    return render(request, 'stack_blend_form.html', {
+        'form': form,
+        'page_title': 'Add stack / blend',
+    })
+
+
+@login_required
+def stack_blend_edit(request, pk):
+    stack_blend = get_object_or_404(StackBlend, pk=pk)
+    if request.method == 'POST':
+        form = StackBlendForm(request.POST, request.FILES, instance=stack_blend)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Stack / blend updated successfully.')
+            return redirect('stack_blend_list')
+    else:
+        form = StackBlendForm(instance=stack_blend)
+    return render(request, 'stack_blend_form.html', {
+        'form': form,
+        'stack_blend': stack_blend,
+        'page_title': 'Edit stack / blend',
+    })
+
+
+@login_required
+def stack_blend_delete(request, pk):
+    stack_blend = get_object_or_404(StackBlend, pk=pk)
+    if request.method == 'POST':
+        if stack_blend.image:
+            stack_blend.image.delete(save=False)
+        stack_blend.delete()
+        messages.success(request, 'Stack / blend deleted successfully.')
+    return redirect('stack_blend_list')
 
 
 @login_required

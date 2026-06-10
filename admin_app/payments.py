@@ -8,6 +8,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from .models import Order
+from .services import send_order_confirmation_email
 
 logger = logging.getLogger(__name__)
 
@@ -183,6 +184,13 @@ def mark_order_paid(order: Order, provider: str, **extra_fields) -> Order:
     for field, value in extra_fields.items():
         setattr(order, field, value)
     order.save()
+    try:
+        send_order_confirmation_email(order)
+    except Exception:
+        logger.exception(
+            'Failed to send order confirmation email for order %s',
+            order.pk,
+        )
     return order
 
 
@@ -266,6 +274,15 @@ def _paypal_access_token() -> str:
         auth=(settings.PAYPAL_CLIENT_ID, settings.PAYPAL_CLIENT_SECRET),
         timeout=30,
     )
+    if response.status_code == 401:
+        mode = settings.PAYPAL_MODE
+        api_host = 'api-m.paypal.com' if mode == 'live' else 'api-m.sandbox.paypal.com'
+        raise PaymentConfigurationError(
+            f'PayPal authentication failed (401 Unauthorized on {api_host}). '
+            f'PAYPAL_MODE is "{mode}" — use sandbox Client ID and Secret when '
+            f'PAYPAL_MODE=sandbox, and live credentials when PAYPAL_MODE=live. '
+            f'Get matching keys from PayPal Developer Dashboard → Apps & Credentials.'
+        )
     response.raise_for_status()
     return response.json()['access_token']
 

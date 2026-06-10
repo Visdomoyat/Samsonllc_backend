@@ -256,10 +256,11 @@ STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 
 # PayPal — https://developer.paypal.com/dashboard/
-PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', '')
-PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', '')
-PAYPAL_MODE = os.environ.get('PAYPAL_MODE', 'sandbox')  # sandbox | live
-PAYPAL_WEBHOOK_ID = os.environ.get('PAYPAL_WEBHOOK_ID', '')
+# Credentials MUST match PAYPAL_MODE (sandbox app → sandbox, live app → live).
+PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', '').strip()
+PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', '').strip()
+PAYPAL_MODE = os.environ.get('PAYPAL_MODE', 'sandbox').strip().lower()  # sandbox | live
+PAYPAL_WEBHOOK_ID = os.environ.get('PAYPAL_WEBHOOK_ID', '').strip()
 
 # HTTPS / cookies (production behind Render's TLS proxy)
 if not DEBUG:

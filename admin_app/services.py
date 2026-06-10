@@ -18,6 +18,49 @@ def ensure_email_can_deliver() -> None:
         raise RuntimeError("EMAIL_HOST is not configured.")
 
 
+def send_order_confirmation_email(order: Order) -> None:
+    ensure_email_can_deliver()
+
+    lines = [
+        f'Hello {order.customer_name},',
+        '',
+        f'Thank you for your order. Payment has been received.',
+        '',
+        f'Order #{order.pk}',
+        f'Total: ${order.total:.2f}',
+        '',
+        'Items:',
+    ]
+    for item in order.items.all():
+        lines.append(
+            f'  - {item.product_name} x{item.quantity}  ${item.line_total:.2f}',
+        )
+    lines.extend([
+        '',
+        'Shipping to:',
+        order.shipping_line1,
+    ])
+    if order.shipping_line2:
+        lines.append(order.shipping_line2)
+    lines.extend([
+        f'{order.shipping_city}, {order.shipping_state} {order.shipping_postal_code}',
+        order.shipping_country,
+        '',
+        'We will email you tracking information when your order ships.',
+        '',
+        'Thank you,',
+        'Eliteforge Peptide',
+    ])
+
+    send_mail(
+        subject=f'Eliteforge — Order #{order.pk} confirmed',
+        message='\n'.join(lines),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[order.customer_email],
+        fail_silently=False,
+    )
+
+
 def send_tracking_email(order: Order) -> None:
     if not order.tracking_number:
         raise ValueError('Tracking number is required before sending email.')

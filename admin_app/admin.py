@@ -1,12 +1,19 @@
 from django.contrib import admin
 
-from .models import Order, OrderItem, Product
+from .models import Order, OrderItem, Product, StackBlend
 
 
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 0
     readonly_fields = ('product_name', 'quantity', 'unit_price')
+
+
+@admin.register(StackBlend)
+class StackBlendAdmin(admin.ModelAdmin):
+    list_display = ('name', 'kind', 'price', 'is_active', 'display_order', 'created_at')
+    list_filter = ('kind', 'is_active')
+    search_fields = ('name',)
 
 
 @admin.register(Product)

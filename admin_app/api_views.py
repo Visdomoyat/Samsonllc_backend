@@ -12,7 +12,12 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_http_methods
 
-from .models import Order, OrderItem, Product
+from .models import Order, OrderItem, Product, StackBlend
+from .stack_blend_pricing import (
+    stack_blend_bundle_tiers,
+    stack_blend_effective_unit_price,
+    stack_blend_line_total,
+)
 from .payments import (
     PaymentConfigurationError,
     capture_paypal_order,
@@ -37,6 +42,27 @@ def _parse_json(request):
         return json.loads(request.body), None
     except json.JSONDecodeError:
         return None, _json_error('Invalid JSON body')
+
+
+def _serialize_stack_blend(request, item: StackBlend, *, include_tiers: bool = False) -> dict:
+    data = {
+        'id': item.pk,
+        'name': item.name,
+        'kind': item.kind,
+        'kind_label': item.get_kind_display(),
+        'description': item.description,
+        'price': str(item.price),
+        'image_url': (
+            request.build_absolute_uri(item.image.url) if item.image else None
+        ),
+        'is_active': item.is_active,
+        'display_order': item.display_order,
+        'created_at': item.created_at.isoformat(),
+        'updated_at': item.updated_at.isoformat(),
+    }
+    if include_tiers:
+        data['bundle_tiers'] = stack_blend_bundle_tiers(item.price)
+    return data
 
 
 def _serialize_product(request, product: Product) -> dict:
@@ -303,6 +329,27 @@ def product_list(request):
     })
 
 
+@require_GET
+def stack_blend_list(request):
+    """Public list — active items only; ?landing=1 returns top 4 for homepage."""
+    items = StackBlend.objects.filter(is_active=True)
+    if request.GET.get('landing') in ('1', 'true', 'yes'):
+        items = items[:4]
+    return JsonResponse({
+        'stack_blends': [
+            _serialize_stack_blend(request, item) for item in items
+        ],
+    })
+
+
+@require_GET
+def stack_blend_detail(request, pk):
+    item = get_object_or_404(StackBlend, pk=pk, is_active=True)
+    return JsonResponse({
+        'stack_blend': _serialize_stack_blend(request, item, include_tiers=True),
+    })
+
+
 @csrf_exempt
 @require_http_methods(['POST'])
 def contact_submit(request):
@@ -374,14 +421,53 @@ def order_create(request):
         )
 
         for entry in items:
+            product_id = entry.get('product_id')
+            stack_blend_id = entry.get('stack_blend_id')
+            if product_id and stack_blend_id:
+                return _json_error('Each item must have product_id or stack_blend_id, not both')
+            if not product_id and not stack_blend_id:
+                return _json_error('Each item needs product_id or stack_blend_id')
+
             try:
-                product_id = int(entry.get('product_id'))
                 quantity = int(entry.get('quantity', 1))
             except (TypeError, ValueError):
-                return _json_error('Each item needs product_id and quantity')
+                return _json_error('Each item needs a valid quantity')
 
             if quantity < 1:
                 return _json_error('quantity must be at least 1')
+
+            if stack_blend_id:
+                try:
+                    stack_blend_id = int(stack_blend_id)
+                except (TypeError, ValueError):
+                    return _json_error('stack_blend_id must be an integer')
+
+                stack_blend = StackBlend.objects.filter(
+                    pk=stack_blend_id,
+                    is_active=True,
+                ).first()
+                if stack_blend is None:
+                    return _json_error(
+                        f'Stack / blend {stack_blend_id} not found',
+                        status=404,
+                    )
+                unit_price = stack_blend_effective_unit_price(
+                    stack_blend.price,
+                    quantity,
+                )
+                OrderItem.objects.create(
+                    order=order,
+                    stack_blend=stack_blend,
+                    product_name=stack_blend.name,
+                    quantity=quantity,
+                    unit_price=unit_price,
+                )
+                continue
+
+            try:
+                product_id = int(product_id)
+            except (TypeError, ValueError):
+                return _json_error('product_id must be an integer')
 
             product = Product.objects.filter(pk=product_id).first()
             if product is None:

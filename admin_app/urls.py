@@ -17,6 +17,18 @@ urlpatterns = [
     path('shop/add/', views.product_create, name='product_create'),
     path('shop/<int:pk>/edit/', views.product_edit, name='product_edit'),
     path('shop/<int:pk>/delete/', views.product_delete, name='product_delete'),
+    path('stacks-blends/', views.stack_blend_list, name='stack_blend_list'),
+    path('stacks-blends/add/', views.stack_blend_create, name='stack_blend_create'),
+    path(
+        'stacks-blends/<int:pk>/edit/',
+        views.stack_blend_edit,
+        name='stack_blend_edit',
+    ),
+    path(
+        'stacks-blends/<int:pk>/delete/',
+        views.stack_blend_delete,
+        name='stack_blend_delete',
+    ),
     path('purchased/', views.purchased, name='purchased'),
     path('purchased/<int:pk>/update/', views.purchased_order_update, name='purchased_order_update'),
     path(
