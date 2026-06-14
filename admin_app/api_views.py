@@ -26,6 +26,7 @@ from .payments import (
     handle_paypal_webhook,
     handle_stripe_webhook,
     paypal_checkout_blocks_stripe,
+    paypal_is_enabled,
     release_paypal_checkout,
     release_stripe_checkout,
     stripe_checkout_blocks_paypal,
@@ -192,14 +193,13 @@ def logout_view(request):
 @require_GET
 def payment_config(request):
     from django.conf import settings
+    enabled = paypal_is_enabled()
     return JsonResponse({
         'stripe_publishable_key': settings.STRIPE_PUBLISHABLE_KEY or None,
-        'paypal_client_id': settings.PAYPAL_CLIENT_ID or None,
+        'paypal_client_id': settings.PAYPAL_CLIENT_ID if enabled else None,
         'paypal_mode': settings.PAYPAL_MODE,
         'stripe_enabled': bool(settings.STRIPE_SECRET_KEY),
-        'paypal_enabled': bool(
-            settings.PAYPAL_CLIENT_ID and settings.PAYPAL_CLIENT_SECRET
-        ),
+        'paypal_enabled': enabled,
     })
 
 
@@ -264,6 +264,11 @@ def order_release_paypal(request, pk):
 @csrf_exempt
 @require_http_methods(['POST'])
 def order_pay_paypal(request, pk):
+    if not paypal_is_enabled():
+        return _json_error(
+            'PayPal checkout is temporarily unavailable.',
+            status=503,
+        )
     order = get_object_or_404(Order.objects.prefetch_related('items'), pk=pk)
     try:
         result = create_paypal_order(order)

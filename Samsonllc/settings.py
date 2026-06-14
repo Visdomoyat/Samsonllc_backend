@@ -256,7 +256,11 @@ STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 
 # PayPal — https://developer.paypal.com/dashboard/
+# Set PAYPAL_ENABLED=False to hide PayPal on checkout without removing credentials.
 # Credentials MUST match PAYPAL_MODE (sandbox app → sandbox, live app → live).
+PAYPAL_ENABLED = os.environ.get('PAYPAL_ENABLED', 'True').lower() in (
+    'true', '1', 'yes',
+)
 PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', '').strip()
 PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', '').strip()
 PAYPAL_MODE = os.environ.get('PAYPAL_MODE', 'sandbox').strip().lower()  # sandbox | live

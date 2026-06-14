@@ -17,6 +17,15 @@ class PaymentConfigurationError(Exception):
     pass
 
 
+def paypal_is_enabled() -> bool:
+    """PayPal checkout is available when enabled in settings and credentials exist."""
+    return (
+        settings.PAYPAL_ENABLED
+        and bool(settings.PAYPAL_CLIENT_ID)
+        and bool(settings.PAYPAL_CLIENT_SECRET)
+    )
+
+
 def _frontend_url(path: str) -> str:
     base = settings.FRONTEND_URL.rstrip('/')
     return f'{base}{path}'
@@ -85,6 +94,8 @@ def _clear_paypal_checkout(order: Order) -> None:
 
 def paypal_checkout_blocks_stripe(order: Order) -> bool:
     """True while PayPal Checkout is still open or completing for this order."""
+    if not paypal_is_enabled():
+        return False
     if order.status != Order.Status.PENDING:
         return False
     if not order.paypal_order_id:
@@ -265,6 +276,11 @@ def _paypal_base_url() -> str:
 
 
 def _paypal_access_token() -> str:
+    if not paypal_is_enabled():
+        raise PaymentConfigurationError(
+            'PayPal is temporarily disabled. Set PAYPAL_ENABLED=True on the server '
+            'when PayPal is ready.',
+        )
     if not settings.PAYPAL_CLIENT_ID or not settings.PAYPAL_CLIENT_SECRET:
         raise PaymentConfigurationError('PayPal credentials are not configured.')
 
