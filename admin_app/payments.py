@@ -269,6 +269,38 @@ def create_stripe_checkout_session(order: Order) -> dict:
     }
 
 
+def confirm_stripe_checkout(order: Order, session_id: str | None = None) -> Order:
+    """Mark order paid from Stripe return URL when webhook is delayed or missing."""
+    if order.status == Order.Status.PAID:
+        return order
+
+    checkout_session_id = (session_id or '').strip() or order.stripe_checkout_session_id
+    if not checkout_session_id:
+        raise ValueError('No Stripe checkout session for this order.')
+
+    if not settings.STRIPE_SECRET_KEY:
+        raise PaymentConfigurationError('STRIPE_SECRET_KEY is not configured.')
+
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    try:
+        session = stripe.checkout.Session.retrieve(checkout_session_id)
+    except stripe.error.StripeError as exc:
+        raise ValueError(f'Stripe error: {exc.user_message or exc}') from exc
+
+    metadata_order_id = session.get('metadata', {}).get('order_id')
+    if metadata_order_id and str(order.pk) != str(metadata_order_id):
+        raise ValueError('Stripe session does not match this order.')
+
+    if session.payment_status != 'paid' and session.status != 'complete':
+        raise ValueError('Stripe payment is not complete yet.')
+
+    return mark_order_paid(
+        order,
+        Order.PaymentProvider.STRIPE,
+        stripe_checkout_session_id=session.id,
+    )
+
+
 def _paypal_base_url() -> str:
     if settings.PAYPAL_MODE == 'live':
         return 'https://api-m.paypal.com'

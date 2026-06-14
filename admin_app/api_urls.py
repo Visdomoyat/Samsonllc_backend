@@ -31,6 +31,11 @@ urlpatterns = [
     ),
     path('orders/<int:pk>/pay/paypal/', api_views.order_pay_paypal, name='api_order_pay_paypal'),
     path(
+        'orders/<int:pk>/stripe/confirm/',
+        api_views.order_stripe_confirm,
+        name='api_order_stripe_confirm',
+    ),
+    path(
         'orders/<int:pk>/paypal/capture/',
         api_views.order_paypal_capture,
         name='api_order_paypal_capture',

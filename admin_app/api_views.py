@@ -21,6 +21,7 @@ from .stack_blend_pricing import (
 from .payments import (
     PaymentConfigurationError,
     capture_paypal_order,
+    confirm_stripe_checkout,
     create_paypal_order,
     create_stripe_checkout_session,
     handle_paypal_webhook,
@@ -284,6 +285,26 @@ def order_pay_paypal(request, pk):
         'paypal_order_id': result['paypal_order_id'],
         'order_id': order.pk,
     })
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def order_stripe_confirm(request, pk):
+    """Confirm Stripe payment on success page if webhook is delayed or missing."""
+    order = get_object_or_404(Order.objects.prefetch_related('items'), pk=pk)
+    payload, error = _parse_json(request)
+    if error:
+        return error
+    session_id = (payload.get('session_id') or '').strip() or None
+    try:
+        order = confirm_stripe_checkout(order, session_id=session_id)
+    except PaymentConfigurationError as exc:
+        return _json_error(str(exc), status=503)
+    except ValueError as exc:
+        return _json_error(str(exc))
+    except stripe.error.StripeError as exc:
+        return _json_error(f'Stripe error: {exc.user_message or exc}', status=502)
+    return JsonResponse({'order': _serialize_order_detail(order)})
 
 
 @csrf_exempt
