@@ -31,6 +31,20 @@ def _frontend_url(path: str) -> str:
     return f'{base}{path}'
 
 
+def _stripe_field(obj, key: str, default=None):
+    """Read a field from a Stripe object or plain dict."""
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
+
+
+def _stripe_metadata_order_id(session) -> str | None:
+    metadata = _stripe_field(session, 'metadata')
+    if not metadata:
+        return None
+    return _stripe_field(metadata, 'order_id')
+
+
 def _order_must_be_payable(order: Order) -> None:
     if order.status == Order.Status.PAID:
         raise ValueError('Order is already paid.')
@@ -287,7 +301,7 @@ def confirm_stripe_checkout(order: Order, session_id: str | None = None) -> Orde
     except stripe.error.StripeError as exc:
         raise ValueError(f'Stripe error: {exc.user_message or exc}') from exc
 
-    metadata_order_id = session.get('metadata', {}).get('order_id')
+    metadata_order_id = _stripe_metadata_order_id(session)
     if metadata_order_id and str(order.pk) != str(metadata_order_id):
         raise ValueError('Stripe session does not match this order.')
 
@@ -430,9 +444,13 @@ def handle_stripe_webhook(payload: bytes, signature: str) -> Order | None:
             payload, signature, settings.STRIPE_WEBHOOK_SECRET,
         )
 
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        order_id = session.get('metadata', {}).get('order_id')
+    event_type = _stripe_field(event, 'type')
+    if event_type == 'checkout.session.completed':
+        data = _stripe_field(event, 'data') or {}
+        session = _stripe_field(data, 'object')
+        if not session:
+            return None
+        order_id = _stripe_metadata_order_id(session)
         if not order_id:
             return None
         order = Order.objects.filter(pk=order_id).first()
@@ -440,7 +458,7 @@ def handle_stripe_webhook(payload: bytes, signature: str) -> Order | None:
             mark_order_paid(
                 order,
                 Order.PaymentProvider.STRIPE,
-                stripe_checkout_session_id=session.get('id', ''),
+                stripe_checkout_session_id=_stripe_field(session, 'id', '') or '',
             )
             return order
     return None
