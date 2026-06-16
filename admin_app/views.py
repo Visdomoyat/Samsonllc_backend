@@ -2,12 +2,14 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import update_session_auth_hash
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from .forms import (
     AccountPasswordChangeForm,
     ProductForm,
+    ProductVariantFormSet,
     StackBlendForm,
     UsernameChangeForm,
 )
@@ -19,7 +21,9 @@ from .services import send_tracking_email
 @login_required
 def shop(request):
     query = (request.GET.get('q') or '').strip()
-    products = list(Product.objects.all())
+    products = list(
+        Product.objects.prefetch_related('variants').all(),
+    )
     if query:
         products = [
             p for p in products
@@ -41,13 +45,26 @@ def product_create(request):
     if request.method == 'POST':
         form = ProductForm(request.POST, request.FILES)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Product added successfully.')
-            return redirect('shop')
+            try:
+                with transaction.atomic():
+                    product = form.save()
+                    formset = ProductVariantFormSet(request.POST, instance=product)
+                    if not formset.is_valid():
+                        raise ValueError('invalid formset')
+                    formset.save()
+            except ValueError:
+                formset = ProductVariantFormSet(request.POST)
+            else:
+                messages.success(request, 'Product added successfully.')
+                return redirect('shop')
+        else:
+            formset = ProductVariantFormSet(request.POST)
     else:
         form = ProductForm()
+        formset = ProductVariantFormSet()
     return render(request, 'product_form.html', {
         'form': form,
+        'formset': formset,
         'page_title': 'Add product',
     })
 
@@ -57,14 +74,19 @@ def product_edit(request, pk):
     product = get_object_or_404(Product, pk=pk)
     if request.method == 'POST':
         form = ProductForm(request.POST, request.FILES, instance=product)
-        if form.is_valid():
-            form.save()
+        formset = ProductVariantFormSet(request.POST, instance=product)
+        if form.is_valid() and formset.is_valid():
+            with transaction.atomic():
+                form.save()
+                formset.save()
             messages.success(request, 'Product updated successfully.')
             return redirect('shop')
     else:
         form = ProductForm(instance=product)
+        formset = ProductVariantFormSet(instance=product)
     return render(request, 'product_form.html', {
         'form': form,
+        'formset': formset,
         'product': product,
         'page_title': 'Edit product',
     })

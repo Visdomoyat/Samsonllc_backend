@@ -328,3 +328,66 @@ select.form-input:focus {
     grid-template-columns: 1fr;
   }
 }
+
+.variant-formset {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-border, #e5e7eb);
+}
+
+.variant-formset-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-brand);
+}
+
+.variant-formset-table-wrap {
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+
+.variant-formset-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.variant-formset-table th,
+.variant-formset-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  vertical-align: top;
+}
+
+.variant-formset-table th {
+  font-weight: 600;
+  color: var(--color-brand);
+}
+
+.variant-formset-checkbox {
+  text-align: center;
+}
+
+.product-variant-list {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+  color: var(--color-brand-muted, #4b5563);
+}
+
+.product-variant-list li + li {
+  margin-top: 0.25rem;
+}
+
+.product-variant-inactive {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.product-variant-empty {
+  color: #9ca3af;
+  font-style: italic;
+}

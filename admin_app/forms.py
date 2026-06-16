@@ -1,8 +1,9 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
+from django.forms import inlineformset_factory
 
-from .models import Product, StackBlend
+from .models import Product, ProductVariant, StackBlend
 
 User = get_user_model()
 
@@ -24,7 +25,7 @@ class LoginForm(AuthenticationForm):
 class ProductForm(forms.ModelForm):
     class Meta:
         model = Product
-        fields = ('name', 'image', 'description', 'price')
+        fields = ('name', 'image', 'description')
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Product name'}),
             'image': forms.FileInput(attrs={'class': 'form-input-file'}),
@@ -33,18 +34,56 @@ class ProductForm(forms.ModelForm):
                 'placeholder': 'Product description',
                 'rows': 4,
             }),
-            'price': forms.NumberInput(attrs={
-                'class': 'form-input',
-                'placeholder': '0.00',
-                'step': '0.01',
-                'min': '0',
-            }),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
             self.fields['image'].required = False
+
+
+class ProductVariantForm(forms.ModelForm):
+    class Meta:
+        model = ProductVariant
+        fields = (
+            'size_value',
+            'size_unit',
+            'price',
+            'is_active',
+            'display_order',
+        )
+        widgets = {
+            'size_value': forms.NumberInput(attrs={
+                'class': 'form-input',
+                'placeholder': '5',
+                'step': '0.01',
+                'min': '0.01',
+            }),
+            'size_unit': forms.Select(attrs={'class': 'form-input'}),
+            'price': forms.NumberInput(attrs={
+                'class': 'form-input',
+                'placeholder': '0.00',
+                'step': '0.01',
+                'min': '0',
+            }),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+            'display_order': forms.NumberInput(attrs={
+                'class': 'form-input',
+                'min': '0',
+                'step': '1',
+            }),
+        }
+
+
+ProductVariantFormSet = inlineformset_factory(
+    Product,
+    ProductVariant,
+    form=ProductVariantForm,
+    extra=1,
+    min_num=1,
+    validate_min=True,
+    can_delete=True,
+)
 
 
 class StackBlendForm(forms.ModelForm):

@@ -40,7 +40,16 @@
           <div class="product-card-body">
             <h2 class="product-card-name">{{ product.name }}</h2>
             <p class="product-card-description">{{ product.description }}</p>
-            <p class="product-card-price">${{ product.price|floatformat:2 }}</p>
+            <ul class="product-variant-list">
+              {% for variant in product.variants.all %}
+                <li>
+                  {{ variant.size_label }} — ${{ variant.price|floatformat:2 }}
+                  {% if not variant.is_active %}<span class="product-variant-inactive">(inactive)</span>{% endif %}
+                </li>
+              {% empty %}
+                <li class="product-variant-empty">No sizes configured</li>
+              {% endfor %}
+            </ul>
 
             <div class="product-card-actions">
               <a href="{% url 'product_edit' product.pk %}" class="btn btn-secondary btn-sm">Edit</a>

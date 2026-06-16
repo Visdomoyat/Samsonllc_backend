@@ -13,7 +13,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_http_methods
 
-from .models import Order, OrderItem, Product, StackBlend
+from .models import Order, OrderItem, Product, ProductVariant, StackBlend
 from .stack_blend_pricing import (
     stack_blend_bundle_tiers,
     stack_blend_effective_unit_price,
@@ -70,16 +70,34 @@ def _serialize_stack_blend(request, item: StackBlend, *, include_tiers: bool = F
     return data
 
 
+def _serialize_product_variant(variant: ProductVariant) -> dict:
+    return {
+        'id': variant.pk,
+        'size_value': str(variant.size_value),
+        'size_unit': variant.size_unit,
+        'size_label': variant.size_label,
+        'price': str(variant.price),
+        'is_active': variant.is_active,
+        'display_order': variant.display_order,
+    }
+
+
 def _serialize_product(request, product: Product) -> dict:
     image_url = None
     if product.image:
         image_url = request.build_absolute_uri(product.image.url)
+    variants = [
+        _serialize_product_variant(variant)
+        for variant in product.variants.filter(is_active=True)
+    ]
+    price_from = product.price_from
     return {
         'id': product.pk,
         'name': product.name,
         'description': product.description,
-        'price': str(product.price),
         'image_url': image_url,
+        'variants': variants,
+        'price_from': str(price_from) if price_from is not None else None,
         'created_at': product.created_at.isoformat(),
         'updated_at': product.updated_at.isoformat(),
     }
@@ -100,7 +118,9 @@ def _serialize_order_item(item: OrderItem) -> dict:
     return {
         'id': item.pk,
         'product_id': item.product_id,
+        'product_variant_id': item.product_variant_id,
         'product_name': item.product_name,
+        'product_description': item.product_description or None,
         'quantity': item.quantity,
         'unit_price': str(item.unit_price),
         'line_total': str(item.line_total),
@@ -353,7 +373,7 @@ def paypal_webhook(request):
 
 @require_GET
 def product_list(request):
-    products = Product.objects.all()
+    products = Product.objects.prefetch_related('variants').all()
     return JsonResponse({
         'products': [_serialize_product(request, product) for product in products],
     })
@@ -451,12 +471,15 @@ def order_create(request):
         )
 
         for entry in items:
-            product_id = entry.get('product_id')
+            product_variant_id = entry.get('product_variant_id')
             stack_blend_id = entry.get('stack_blend_id')
-            if product_id and stack_blend_id:
-                return _json_error('Each item must have product_id or stack_blend_id, not both')
-            if not product_id and not stack_blend_id:
-                return _json_error('Each item needs product_id or stack_blend_id')
+            product_id = entry.get('product_id')
+
+            if sum(bool(x) for x in (product_variant_id, stack_blend_id, product_id)) != 1:
+                return _json_error(
+                    'Each item must have exactly one of product_variant_id, '
+                    'stack_blend_id, or product_id',
+                )
 
             try:
                 quantity = int(entry.get('quantity', 1))
@@ -494,21 +517,61 @@ def order_create(request):
                 )
                 continue
 
-            try:
-                product_id = int(product_id)
-            except (TypeError, ValueError):
-                return _json_error('product_id must be an integer')
+            if product_variant_id:
+                try:
+                    product_variant_id = int(product_variant_id)
+                except (TypeError, ValueError):
+                    return _json_error('product_variant_id must be an integer')
 
-            product = Product.objects.filter(pk=product_id).first()
-            if product is None:
-                return _json_error(f'Product {product_id} not found', status=404)
-            OrderItem.objects.create(
-                order=order,
-                product=product,
-                product_name=product.name,
-                quantity=quantity,
-                unit_price=product.price,
-            )
+                variant = ProductVariant.objects.select_related('product').filter(
+                    pk=product_variant_id,
+                    is_active=True,
+                ).first()
+                if variant is None:
+                    return _json_error(
+                        f'Product variant {product_variant_id} not found',
+                        status=404,
+                    )
+                product = variant.product
+                OrderItem.objects.create(
+                    order=order,
+                    product=product,
+                    product_variant=variant,
+                    product_name=f'{product.name} — {variant.size_label}',
+                    product_description=product.description,
+                    quantity=quantity,
+                    unit_price=variant.price,
+                )
+                continue
+
+            if product_id:
+                try:
+                    product_id = int(product_id)
+                except (TypeError, ValueError):
+                    return _json_error('product_id must be an integer')
+
+                product = Product.objects.filter(pk=product_id).first()
+                if product is None:
+                    return _json_error(f'Product {product_id} not found', status=404)
+
+                active_variants = product.variants.filter(is_active=True)
+                if active_variants.count() != 1:
+                    return _json_error(
+                        f'Product {product_id} requires product_variant_id',
+                    )
+                variant = active_variants.first()
+                OrderItem.objects.create(
+                    order=order,
+                    product=product,
+                    product_variant=variant,
+                    product_name=f'{product.name} — {variant.size_label}',
+                    product_description=product.description,
+                    quantity=quantity,
+                    unit_price=variant.price,
+                )
+                continue
+
+            return _json_error('Each item needs a product_variant_id or stack_blend_id')
 
     order.refresh_from_db()
     return JsonResponse({'order': _serialize_order_detail(order)}, status=201)

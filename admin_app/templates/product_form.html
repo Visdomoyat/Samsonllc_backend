@@ -4,7 +4,7 @@
 {% block title %}{{ page_title }} — Eliteforge Admin{% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'css/shop.css' %}?v=3">
+  <link rel="stylesheet" href="{% static 'css/shop.css' %}?v=4">
 {% endblock %}
 
 {% block content %}
@@ -14,7 +14,7 @@
       <div class="shop-header">
         <div>
           <h1 class="page-hero-title">{{ page_title }}</h1>
-          <p class="page-hero-subtitle">Update product details and images for the storefront.</p>
+          <p class="page-hero-subtitle">Set product details and one or more size options (MG or ML), each with its own price.</p>
         </div>
         <a href="{% url 'shop' %}" class="btn btn-secondary">Back to shop</a>
       </div>
@@ -54,18 +54,76 @@
     <div class="form-field">
       <label for="{{ form.description.id_for_label }}">Description</label>
       {{ form.description }}
+      <p class="form-hint">Shown to customers in the cart and checkout.</p>
       {% if form.description.errors %}
         <p class="field-error">{{ form.description.errors.0 }}</p>
       {% endif %}
     </div>
 
-    <div class="form-field">
-      <label for="{{ form.price.id_for_label }}">Price</label>
-      {{ form.price }}
-      {% if form.price.errors %}
-        <p class="field-error">{{ form.price.errors.0 }}</p>
+    <section class="variant-formset">
+      <div class="variant-formset-header">
+        <h2 class="variant-formset-title">Sizes &amp; prices</h2>
+        <p class="form-hint">Add at least one size. Customers choose a size before adding to cart.</p>
+      </div>
+
+      {{ formset.management_form }}
+      {% if formset.non_form_errors %}
+        <div class="form-errors" role="alert">
+          {% for error in formset.non_form_errors %}
+            <p>{{ error }}</p>
+          {% endfor %}
+        </div>
       {% endif %}
-    </div>
+
+      <div class="variant-formset-table-wrap">
+        <table class="variant-formset-table">
+          <thead>
+            <tr>
+              <th>Size</th>
+              <th>Unit</th>
+              <th>Price ($)</th>
+              <th>Order</th>
+              <th>Active</th>
+              <th>Delete</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for variant_form in formset %}
+              <tr class="variant-formset-row">
+                {% for hidden in variant_form.hidden_fields %}
+                  {{ hidden }}
+                {% endfor %}
+                <td>
+                  {{ variant_form.size_value }}
+                  {% if variant_form.size_value.errors %}
+                    <p class="field-error">{{ variant_form.size_value.errors.0 }}</p>
+                  {% endif %}
+                </td>
+                <td>
+                  {{ variant_form.size_unit }}
+                  {% if variant_form.size_unit.errors %}
+                    <p class="field-error">{{ variant_form.size_unit.errors.0 }}</p>
+                  {% endif %}
+                </td>
+                <td>
+                  {{ variant_form.price }}
+                  {% if variant_form.price.errors %}
+                    <p class="field-error">{{ variant_form.price.errors.0 }}</p>
+                  {% endif %}
+                </td>
+                <td>{{ variant_form.display_order }}</td>
+                <td class="variant-formset-checkbox">{{ variant_form.is_active }}</td>
+                <td class="variant-formset-checkbox">
+                  {% if variant_form.instance.pk %}
+                    {{ variant_form.DELETE }}
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
 
     <div class="form-actions">
       <button type="submit" class="btn btn-primary">Save product</button>

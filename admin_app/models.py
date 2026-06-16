@@ -41,7 +41,6 @@ class Product(models.Model):
     name = models.CharField(max_length=200)
     image = models.ImageField(upload_to='products/')
     description = models.TextField()
-    price = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -50,6 +49,61 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def active_variants(self):
+        return self.variants.filter(is_active=True)
+
+    @property
+    def price_from(self) -> Decimal | None:
+        prices = [
+            variant.price
+            for variant in self.active_variants.only('price')
+        ]
+        return min(prices) if prices else None
+
+
+class ProductVariant(models.Model):
+    class SizeUnit(models.TextChoices):
+        MG = 'mg', 'MG'
+        ML = 'ml', 'ML'
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='variants',
+    )
+    size_value = models.DecimalField(max_digits=10, decimal_places=2)
+    size_unit = models.CharField(max_length=2, choices=SizeUnit.choices)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    is_active = models.BooleanField(
+        default=True,
+        help_text='Inactive variants are hidden from the storefront.',
+    )
+    display_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['display_order', 'size_value', 'id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['product', 'size_value', 'size_unit'],
+                name='unique_product_size',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.product.name} — {self.size_label}'
+
+    @property
+    def size_label(self) -> str:
+        value = self.size_value
+        if value == value.to_integral_value():
+            value_text = str(int(value))
+        else:
+            value_text = format(value.normalize(), 'f').rstrip('0').rstrip('.')
+        return f'{value_text} {self.get_size_unit_display()}'
 
 
 class Order(models.Model):
@@ -117,6 +171,13 @@ class OrderItem(models.Model):
         blank=True,
         related_name='order_items',
     )
+    product_variant = models.ForeignKey(
+        'ProductVariant',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='order_items',
+    )
     stack_blend = models.ForeignKey(
         StackBlend,
         on_delete=models.SET_NULL,
@@ -125,6 +186,7 @@ class OrderItem(models.Model):
         related_name='order_items',
     )
     product_name = models.CharField(max_length=200)
+    product_description = models.TextField(blank=True)
     quantity = models.PositiveIntegerField(default=1)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
 
