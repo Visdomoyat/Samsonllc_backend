@@ -49,11 +49,21 @@ _render_hostname = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
 if _render_hostname and _render_hostname not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(_render_hostname)
 
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173').rstrip('/')
+
 FRONTEND_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://eliteforge.netlify.app",
+    "https://eliteforgepeptides.com",
+    "https://www.eliteforgepeptides.com",
 ]
+if FRONTEND_URL.startswith('http') and FRONTEND_URL not in FRONTEND_ORIGINS:
+    FRONTEND_ORIGINS.append(FRONTEND_URL)
+for _origin in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(','):
+    _origin = _origin.strip()
+    if _origin and _origin not in FRONTEND_ORIGINS:
+        FRONTEND_ORIGINS.append(_origin)
 
 
 # Application definition
@@ -227,7 +237,7 @@ CSRF_TRUSTED_ORIGINS = list(FRONTEND_ORIGINS)
 if _render_hostname:
     CSRF_TRUSTED_ORIGINS.append(f"https://{_render_hostname}")
 
-# Email — console locally unless SMTP env vars are set (required on Render for real delivery)
+# Email — console locally unless SMTP or SendGrid API env vars are set.
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "orders@eliteforge.com")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "customerorder@eliteforgepeptides.com")
@@ -240,6 +250,15 @@ EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").lower() in ("true", "1",
 EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "False").lower() in ("true", "1", "yes")
 EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "15"))
 
+_sendgrid_api_key = os.environ.get("SENDGRID_API_KEY", "").strip()
+if not _sendgrid_api_key and EMAIL_HOST_PASSWORD.strip().startswith("SG."):
+    _sendgrid_api_key = EMAIL_HOST_PASSWORD.strip()
+SENDGRID_API_KEY = _sendgrid_api_key
+# Render free tier blocks SMTP ports 587/465 — use SendGrid HTTP API instead.
+USE_SENDGRID_API = os.environ.get("USE_SENDGRID_API", "True").lower() in (
+    "true", "1", "yes",
+) and bool(SENDGRID_API_KEY)
+
 _email_backend = os.environ.get("EMAIL_BACKEND", "").strip()
 if _email_backend:
     EMAIL_BACKEND = _email_backend
@@ -247,9 +266,6 @@ elif EMAIL_HOST:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-
-# Customer storefront (Stripe/PayPal return URLs)
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
 
 # Stripe — https://dashboard.stripe.com/apikeys
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')

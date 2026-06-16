@@ -1,18 +1,21 @@
 from django.conf import settings
-from django.core.mail import EmailMessage, send_mail
 from django.utils import timezone
 
+from .email_delivery import send_plain_email
 from .models import Order
 
 
 def ensure_email_can_deliver() -> None:
     """Console backend only prints to logs — customers never receive mail."""
+    if settings.USE_SENDGRID_API and settings.SENDGRID_API_KEY:
+        return
     if settings.EMAIL_BACKEND == "django.core.mail.backends.console.EmailBackend":
         if settings.DEBUG:
             return
         raise RuntimeError(
-            "Email is not configured for production. On Render, set EMAIL_HOST, "
-            "EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, EMAIL_PORT, and DEFAULT_FROM_EMAIL."
+            "Email is not configured for production. Set SENDGRID_API_KEY "
+            "(or EMAIL_HOST_PASSWORD with an SG key) and USE_SENDGRID_API=True "
+            "on Render free tier, or configure SMTP on a paid instance."
         )
     if not settings.EMAIL_HOST:
         raise RuntimeError("EMAIL_HOST is not configured.")
@@ -52,12 +55,10 @@ def send_order_confirmation_email(order: Order) -> None:
         'Eliteforge Peptide',
     ])
 
-    send_mail(
+    send_plain_email(
         subject=f'Eliteforge — Order #{order.pk} confirmed',
-        message='\n'.join(lines),
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[order.customer_email],
-        fail_silently=False,
+        body='\n'.join(lines),
+        to_emails=[order.customer_email],
     )
 
 
@@ -85,12 +86,10 @@ def send_tracking_email(order: Order) -> None:
         f'Eliteforge'
     )
 
-    send_mail(
+    send_plain_email(
         subject=subject,
-        message=message,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[order.customer_email],
-        fail_silently=False,
+        body=message,
+        to_emails=[order.customer_email],
     )
     order.tracking_emailed_at = timezone.now()
     order.save(update_fields=['tracking_emailed_at', 'updated_at'])
@@ -107,10 +106,9 @@ def send_contact_message(name: str, email: str, message: str) -> None:
         f'Message:\n{message}\n'
     )
 
-    EmailMessage(
+    send_plain_email(
         subject=subject,
         body=body,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[settings.CONTACT_EMAIL],
-        reply_to=[email],
-    ).send(fail_silently=False)
+        to_emails=[settings.CONTACT_EMAIL],
+        reply_to=email,
+    )

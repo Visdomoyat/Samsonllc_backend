@@ -291,8 +291,10 @@ def confirm_stripe_checkout(order: Order, session_id: str | None = None) -> Orde
     if metadata_order_id and str(order.pk) != str(metadata_order_id):
         raise ValueError('Stripe session does not match this order.')
 
-    if session.payment_status != 'paid' and session.status != 'complete':
+    if session.status != 'complete':
         raise ValueError('Stripe payment is not complete yet.')
+    if session.payment_status not in ('paid', 'no_payment_required'):
+        raise ValueError('Stripe payment is not paid yet.')
 
     return mark_order_paid(
         order,

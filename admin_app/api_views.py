@@ -1,4 +1,5 @@
 import json
+import logging
 
 import requests
 import stripe
@@ -33,6 +34,8 @@ from .payments import (
     stripe_checkout_blocks_paypal,
 )
 from .services import send_contact_message, send_tracking_email
+
+logger = logging.getLogger(__name__)
 
 
 def _json_error(message: str, status: int = 400) -> JsonResponse:
@@ -330,6 +333,7 @@ def stripe_webhook(request):
     try:
         order = handle_stripe_webhook(request.body, signature)
     except Exception as exc:
+        logger.exception('Stripe webhook failed')
         return _json_error(str(exc), status=400)
     return JsonResponse({'received': True, 'order_id': order.pk if order else None})
 
