@@ -238,6 +238,7 @@ EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "").strip()
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
 EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "False").lower() in ("true", "1", "yes")
+EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "15"))
 
 _email_backend = os.environ.get("EMAIL_BACKEND", "").strip()
 if _email_backend:
